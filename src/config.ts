@@ -12,16 +12,38 @@ export const COLORS = {
   monkeyFur: 0x8d5524,
   monkeyFace: 0xf1c27d,
   monkeyEye: 0x000000,
-  star: 0xffd54f,
+  banana: 0xffe135,
+  bananaTip: 0x5d4037,
+  apple: 0xe53935,
+  appleShine: 0xff8a80,
+  appleStem: 0x5d4037,
+  appleLeaf: 0x7cb342,
   text: '#ffffff',
   textShadow: '#1b5e20',
+  ground: 0x4e342e,
+  groundGrass: 0x33691e,
 } as const;
 
-export const PLAYER_SIZE = 48;
+export const PLAYER_WIDTH = 56;
 export const PLAYER_SPEED = 300; // pixels per second
 
-export const STAR_SIZE = 20;
-export const POINTS_PER_STAR = 1;
+/** Gravity and jumping. Speeds are pixels per second. */
+export const PHYSICS = {
+  gravity: 1500,
+  jumpSpeed: 800,
+  /** Extra upward push when jumping off a vine. */
+  vineJumpSpeed: 650,
+} as const;
+
+/** The ground is a strip at the bottom of the screen. */
+export const GROUND_HEIGHT = 50;
+export const GROUND_Y = GAME_HEIGHT - GROUND_HEIGHT;
+export const GRASS_HEIGHT = 8;
+
+export const FRUIT_SIZE = 40;
+export const POINTS_PER_FRUIT = 1;
+/** Fruit never appears higher than this, so the monkey can reach it. */
+export const FRUIT_TOP_Y = 110;
 
 /** Jungle decoration layout. x positions are fractions of GAME_WIDTH. */
 export const JUNGLE = {
@@ -40,10 +62,20 @@ export const JUNGLE = {
   trunkWidth: 26,
   leafRadius: 46,
   vines: [
-    { x: 0.18, length: 140 },
-    { x: 0.46, length: 90 },
-    { x: 0.62, length: 170 },
-    { x: 0.86, length: 120 },
+    { x: 0.18, length: 290 },
+    { x: 0.46, length: 270 },
+    { x: 0.62, length: 320 },
+    { x: 0.86, length: 300 },
   ],
   vineWidth: 5,
+} as const;
+
+/** Vine swinging and grabbing. Angles are in degrees. */
+export const VINE = {
+  swingDegrees: 6,
+  hangSwingDegrees: 30,
+  periodMs: 2400,
+  swingChangeDegreesPerSecond: 20,
+  grabRadius: 30,
+  phaseStep: 1.3, // radians between neighbouring vines
 } as const;
