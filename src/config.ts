@@ -8,6 +8,7 @@ export const COLORS = {
   sky: 0x81d4fa,
   cloud: 0xffffff,
   sun: 0xffeb3b,
+  beak: 0xff9800,
   leaf: 0x43a047,
   leafLight: 0x66bb6a,
   trunk: 0x6d4c41,

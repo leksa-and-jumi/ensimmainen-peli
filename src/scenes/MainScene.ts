@@ -27,7 +27,7 @@ import { drawJungle } from '../objects/JungleBackground';
 import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
 import { createMonkey } from '../objects/Monkey';
-import { createSkyBird, SKY_BIRD_FRAMES } from '../objects/SkyBird';
+import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
 import { createVine } from '../objects/Vine';
 
 interface SwingingVine {
@@ -40,6 +40,7 @@ interface SwingingVine {
 
 interface SkyBird {
   image: Phaser.GameObjects.Image;
+  color: number;
   x: number;
   y: number;
   speed: number;
@@ -103,6 +104,7 @@ export class MainScene extends Phaser.Scene {
     drawJungle(this);
     this.skyBirds = SKY_BIRDS.birds.map((bird, i) => ({
       image: createSkyBird(this, bird.color).setFlipX(bird.direction < 0),
+      color: bird.color,
       x: bird.startX * GAME_WIDTH,
       y: bird.y,
       speed: bird.speed,
@@ -220,7 +222,7 @@ export class MainScene extends Phaser.Scene {
 
   private flyBirds(time: number, delta: number): void {
     const half = SKY_BIRDS.width / 2;
-    const frame = SKY_BIRD_FRAMES[flapFrame(time, SKY_BIRDS.flapMs)];
+    const frame = flapFrame(time, SKY_BIRDS.flapMs);
     for (const bird of this.skyBirds) {
       bird.x = stepFlight(
         bird.x,
@@ -231,7 +233,8 @@ export class MainScene extends Phaser.Scene {
         GAME_WIDTH + half,
       );
       const bob = bobOffset(time, SKY_BIRDS.bobPixels, SKY_BIRDS.bobPeriodMs, bird.phase);
-      bird.image.setPosition(bird.x, bird.y + bob).setTexture(frame);
+      bird.image.setPosition(bird.x, bird.y + bob);
+      setSkyBirdFrame(bird.image, bird.color, frame);
     }
   }
 
