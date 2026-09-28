@@ -88,13 +88,14 @@ export const VINE = {
 } as const;
 
 /**
- * Lions and snakes walk back and forth on the ground.
- * Sizes in pixels, speeds in pixels per second, startX as a fraction of GAME_WIDTH.
+ * Lions and snakes come now and then and walk across the ground.
+ * After leaving they stay away for a random time between awayMinMs and awayMaxMs.
+ * Sizes in pixels, speeds in pixels per second.
  * `gridWidth` is the width of the grid the drawing uses.
  */
 export const ENEMIES = {
-  lion: { width: 96, height: 67, gridWidth: 80, speed: 120, startX: 0.85 },
-  snake: { width: 86, height: 34, gridWidth: 72, speed: 70, startX: 0.15 },
+  lion: { width: 96, height: 67, gridWidth: 80, speed: 120, awayMinMs: 3000, awayMaxMs: 8000 },
+  snake: { width: 86, height: 34, gridWidth: 72, speed: 70, awayMinMs: 2000, awayMaxMs: 6000 },
 } as const;
 
 /** Enemy hit boxes are this many pixels smaller on each side, to be fair. */

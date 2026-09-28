@@ -17,7 +17,7 @@ Olet **apina** 🐒 viidakossa 🌴.
 - Kerää **banaaneja** 🍌 ja **omenoita** 🍎. Jokaisesta saa pisteen.
 - Hyppää **liaanin päähän**, niin apina tarttuu kiinni ja heiluu 🌿.
 - Hyppää liaanista irti, niin apina lentää heilahduksen vauhdilla! 🚀
-- **Varo leijonaa 🦁 ja käärmettä 🐍!** Jos apina osuu niihin, peli loppuu.
+- **Varo leijonaa 🦁 ja käärmettä 🐍!** Ne tulevat välillä viidakkoon ja menevät taas pois. Jos apina osuu niihin, peli loppuu.
 - Paina **välilyöntiä**, niin pelaat uudestaan.
 
 _Peli on vielä kesken. Pojat päättävät, mitä siihen tulee seuraavaksi!_

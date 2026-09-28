@@ -16,7 +16,7 @@ import {
   VINE,
 } from '../config';
 import { randomPosition } from '../logic/bounds';
-import { stepPatrol, type Patrol } from '../logic/patrol';
+import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic/visitor';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
@@ -37,7 +37,8 @@ interface SwingingVine {
 interface Enemy {
   kind: EnemyKind;
   image: Phaser.GameObjects.Image;
-  patrol: Patrol;
+  rules: VisitorRules;
+  visitor: Visitor;
 }
 
 const HINT = '← → liiku.  ↑ tai välilyönti: hyppää!  Varo leijonaa ja käärmettä!';
@@ -93,10 +94,18 @@ export class MainScene extends Phaser.Scene {
       };
     });
     this.enemies = ENEMY_KINDS.map((kind) => {
-      const { height, startX } = ENEMIES[kind];
-      const image = createEnemy(this, kind);
+      const { width, height, speed, awayMinMs, awayMaxMs } = ENEMIES[kind];
+      const image = createEnemy(this, kind).setVisible(false);
       image.y = GROUND_Y - height / 2;
-      return { kind, image, patrol: { x: startX * GAME_WIDTH, direction: startX > 0.5 ? -1 : 1 } };
+      const rules = {
+        speed,
+        awayMinMs,
+        awayMaxMs,
+        leftX: -width / 2,
+        rightX: GAME_WIDTH + width / 2,
+      };
+      // Everyone starts away, so the monkey gets a calm start.
+      return { kind, image, rules, visitor: { phase: 'away', timeLeftMs: awayTime(rules) } };
     });
     this.player = createMonkey(this, GAME_WIDTH / 2, GROUND_Y / 2);
     this.fruits = [createFruit(this, 'banana'), createFruit(this, 'apple')];
@@ -149,24 +158,22 @@ export class MainScene extends Phaser.Scene {
       }
     }
 
-    if (this.enemies.some((enemy) => this.touches(playerBounds, enemy))) {
+    const visible = this.enemies.filter((enemy) => enemy.image.visible);
+    if (visible.some((enemy) => this.touches(playerBounds, enemy))) {
       this.showGameOver();
     }
   }
 
   private moveEnemies(delta: number): void {
     for (const enemy of this.enemies) {
-      const half = ENEMIES[enemy.kind].width / 2;
-      enemy.patrol = stepPatrol(
-        enemy.patrol,
-        ENEMIES[enemy.kind].speed,
-        delta / 1000,
-        half,
-        GAME_WIDTH - half,
-      );
-      enemy.image.x = enemy.patrol.x;
-      // Drawings face right, so flip them when walking left.
-      enemy.image.setFlipX(enemy.patrol.direction < 0);
+      enemy.visitor = stepVisitor(enemy.visitor, delta, enemy.rules);
+      const walking = enemy.visitor.phase === 'walking';
+      enemy.image.setVisible(walking);
+      if (enemy.visitor.phase === 'walking') {
+        enemy.image.x = enemy.visitor.x;
+        // Drawings face right, so flip them when walking left.
+        enemy.image.setFlipX(enemy.visitor.direction < 0);
+      }
     }
   }
 
