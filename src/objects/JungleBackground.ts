@@ -1,7 +1,15 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH, JUNGLE } from '../config';
+import {
+  COLORS,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  GRASS_HEIGHT,
+  GROUND_HEIGHT,
+  GROUND_Y,
+  JUNGLE,
+} from '../config';
 
-/** Draws the static jungle scenery: shady ground and trees. */
+/** Draws the static jungle scenery: shade, trees and the ground. */
 export function drawJungle(scene: Phaser.Scene): void {
   const g = scene.add.graphics();
 
@@ -24,4 +32,9 @@ export function drawJungle(scene: Phaser.Scene): void {
     g.fillStyle(COLORS.leafLight);
     g.fillCircle(x, top - r * 0.5, r);
   }
+
+  g.fillStyle(COLORS.ground);
+  g.fillRect(0, GROUND_Y, GAME_WIDTH, GROUND_HEIGHT);
+  g.fillStyle(COLORS.groundGrass);
+  g.fillRect(0, GROUND_Y, GAME_WIDTH, GRASS_HEIGHT);
 }
