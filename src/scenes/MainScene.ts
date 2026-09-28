@@ -5,6 +5,7 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  MONKEY_ANIMATION,
   SKY_BIRDS,
   ENEMIES,
   ENEMY_HITBOX_INSET,
@@ -19,6 +20,7 @@ import {
 import { randomPosition } from '../logic/bounds';
 import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic/visitor';
 import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
+import { monkeyPose } from '../logic/pose';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
@@ -26,7 +28,7 @@ import { createEnemy, type EnemyKind } from '../objects/Enemies';
 import { drawJungle } from '../objects/JungleBackground';
 import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
-import { createMonkey } from '../objects/Monkey';
+import { createMonkey, setMonkeyPose } from '../objects/Monkey';
 import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
 import { createVine } from '../objects/Vine';
 
@@ -76,6 +78,7 @@ export class MainScene extends Phaser.Scene {
   private vx = 0;
   private vy = 0;
   private onGround = false;
+  private walking = false;
   private scoreText!: Phaser.GameObjects.Text;
   private score = 0;
   private enemies: Enemy[] = [];
@@ -95,6 +98,7 @@ export class MainScene extends Phaser.Scene {
     this.vx = 0;
     this.vy = 0;
     this.onGround = false;
+    this.walking = false;
     this.score = 0;
     this.gameOver = false;
     this.jumpQueued = false;
@@ -204,6 +208,7 @@ export class MainScene extends Phaser.Scene {
     } else {
       this.hang(this.hangingOn, delta);
     }
+    this.animateMonkey(time);
 
     const playerBounds = this.player.getBounds();
     for (const fruit of this.fruits) {
@@ -218,6 +223,16 @@ export class MainScene extends Phaser.Scene {
     if (visible.some((enemy) => this.touches(playerBounds, enemy))) {
       this.showGameOver();
     }
+  }
+
+  private animateMonkey(time: number): void {
+    const state = {
+      hanging: this.hangingOn !== null,
+      onGround: this.onGround,
+      walking: this.walking,
+    };
+    const pose = monkeyPose(state, time, MONKEY_ANIMATION.stepMs, MONKEY_ANIMATION.kickMs);
+    setMonkeyPose(this.player, pose);
   }
 
   private flyBirds(time: number, delta: number): void {
@@ -332,6 +347,7 @@ export class MainScene extends Phaser.Scene {
     let direction = 0;
     if (this.cursors.left.isDown) direction -= 1;
     if (this.cursors.right.isDown) direction += 1;
+    this.walking = direction !== 0;
 
     if (this.onGround) {
       this.vx = direction * PLAYER_SPEED;

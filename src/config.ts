@@ -38,6 +38,12 @@ export const COLORS = {
 export const PLAYER_WIDTH = 56;
 export const PLAYER_SPEED = 300; // pixels per second
 
+/** How fast the monkey's arms and legs move, in milliseconds per picture. */
+export const MONKEY_ANIMATION = {
+  stepMs: 140,
+  kickMs: 300,
+} as const;
+
 /** Gravity and jumping. Speeds are pixels per second. */
 export const PHYSICS = {
   gravity: 1500,
