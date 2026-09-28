@@ -85,7 +85,7 @@ interface Enemy {
   visitor: Visitor;
 }
 
-const HINT = '← → liiku.  ↑ tai välilyönti: hyppää!  Varo leijonaa ja käärmettä!';
+const HINT = '← → tai A D: liiku.  ↑, W tai välilyönti: hyppää!  Varo petoja!';
 const MUTED_KEY = 'muted';
 const ENEMY_KINDS: readonly EnemyKind[] = ['lion', 'snake'];
 
@@ -98,6 +98,9 @@ export class MainScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Image;
   private fruits: Phaser.GameObjects.Image[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  /** Letter keys that work like the arrows: A = left, D = right (W jumps). */
+  private letterLeft!: Phaser.Input.Keyboard.Key;
+  private letterRight!: Phaser.Input.Keyboard.Key;
   private vines: SwingingVine[] = [];
   /** The vine the monkey hangs on, or null. */
   private hangingOn: SwingingVine | null = null;
@@ -211,12 +214,15 @@ export class MainScene extends Phaser.Scene {
       throw new Error('Keyboard input is not available');
     }
     this.cursors = keyboard.createCursorKeys();
+    this.letterLeft = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    this.letterRight = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     // Listen to key presses directly, so even a very quick tap is noticed.
     const queueJump = (event: KeyboardEvent): void => {
       if (!event.repeat) this.jumpQueued = true;
     };
     keyboard.on('keydown-UP', queueJump);
     keyboard.on('keydown-SPACE', queueJump);
+    keyboard.on('keydown-W', queueJump);
 
     // Kept in the game registry, so the choice stays when the game restarts.
     const isMuted = (): boolean => this.registry.get(MUTED_KEY) === true;
@@ -449,8 +455,8 @@ export class MainScene extends Phaser.Scene {
   private move(delta: number): void {
     const wantsJump = this.jumpPressed();
     let direction = 0;
-    if (this.cursors.left.isDown) direction -= 1;
-    if (this.cursors.right.isDown) direction += 1;
+    if (this.cursors.left.isDown || this.letterLeft.isDown) direction -= 1;
+    if (this.cursors.right.isDown || this.letterRight.isDown) direction += 1;
     this.walking = direction !== 0;
 
     if (this.onGround) {
