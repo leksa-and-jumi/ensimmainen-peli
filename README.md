@@ -4,6 +4,8 @@ Julius ja Leo suunnittelevat, Claude rakentaa.
 
 ## Pelaa
 
+👉 **[Pelaa tästä!](https://leksa-and-jumi.github.io/ensimmainen-peli/)**
+
 Peli julkaistaan GitHub Pagesiin aina, kun uusi versio valmistuu.
 
 ## Miten pelataan
@@ -15,6 +17,8 @@ Olet **apina** 🐒 viidakossa 🌴.
 - Kerää **banaaneja** 🍌 ja **omenoita** 🍎. Jokaisesta saa pisteen.
 - Hyppää **liaanin päähän**, niin apina tarttuu kiinni ja heiluu 🌿.
 - Hyppää liaanista irti, niin apina lentää heilahduksen vauhdilla! 🚀
+- **Varo leijonaa 🦁 ja käärmettä 🐍!** Jos apina osuu niihin, peli loppuu.
+- Paina **välilyöntiä**, niin pelaat uudestaan.
 
 _Peli on vielä kesken. Pojat päättävät, mitä siihen tulee seuraavaksi!_
 
