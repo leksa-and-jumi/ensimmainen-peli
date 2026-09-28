@@ -115,6 +115,17 @@ export const VINE = {
   swingChangeDegreesPerSecond: 20,
   grabRadius: 30,
   phaseStep: 1.3, // radians between neighbouring vines
+  /** How far behind the swing the middle of the vine lags, in seconds. Bigger = floppier. */
+  bendLagSeconds: 0.25,
+  /** Rubber band: how much the vine stretches with the monkey on it, in pixels. */
+  hangStretch: 30,
+  springStiffness: 120,
+  springDamping: 6,
+  /** Extra downward bounce when the monkey grabs the vine, in pixels per second. */
+  grabBounceSpeed: 250,
+  curvePoints: 16,
+  /** Where the small leaves grow along the vine (0 = top, 1 = tip). */
+  leafSpots: [0.3, 0.5, 0.7],
 } as const;
 
 /**
@@ -178,7 +189,7 @@ export const SKY_BIRDS = {
   bobPixels: 6,
   bobPeriodMs: 1200,
   birds: [
-    { color: 0xe53935, y: 70, speed: 90, direction: 1, startX: 0.1 },
+    { color: 0xe53935, y: 100, speed: 90, direction: 1, startX: 0.1 },
     { color: 0x1e88e5, y: 135, speed: 60, direction: -1, startX: 0.6 },
     { color: 0xfdd835, y: 195, speed: 110, direction: 1, startX: 0.4 },
   ],
