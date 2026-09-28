@@ -5,6 +5,9 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  ENEMIES,
+  ENEMY_HITBOX_INSET,
+  GAME_OVER_OVERLAY_ALPHA,
   PHYSICS,
   GROUND_Y,
   FRUIT_TOP_Y,
@@ -13,9 +16,11 @@ import {
   VINE,
 } from '../config';
 import { randomPosition } from '../logic/bounds';
+import { stepPatrol, type Patrol } from '../logic/patrol';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
+import { createEnemy, type EnemyKind } from '../objects/Enemies';
 import { drawJungle } from '../objects/JungleBackground';
 import { createFruit } from '../objects/Fruit';
 import { createMonkey } from '../objects/Monkey';
@@ -29,12 +34,19 @@ interface SwingingVine {
   tip: { x: number; y: number };
 }
 
-const HINT = '← → liiku.  ↑ tai välilyönti: hyppää!  Hyppää liaaniin roikkumaan.';
+interface Enemy {
+  kind: EnemyKind;
+  image: Phaser.GameObjects.Image;
+  patrol: Patrol;
+}
+
+const HINT = '← → liiku.  ↑ tai välilyönti: hyppää!  Varo leijonaa ja käärmettä!';
+const ENEMY_KINDS: readonly EnemyKind[] = ['lion', 'snake'];
 
 /**
  * Jungle scene: the monkey walks and jumps with gravity and collects fruit.
  * It grabs a vine by touching its tip and jumps off with up or space,
- * keeping the speed of the swing.
+ * keeping the speed of the swing. Touching a lion or a snake ends the game.
  */
 export class MainScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Image;
@@ -50,9 +62,22 @@ export class MainScene extends Phaser.Scene {
   private onGround = false;
   private scoreText!: Phaser.GameObjects.Text;
   private score = 0;
+  private enemies: Enemy[] = [];
+  private gameOver = false;
 
   constructor() {
     super('MainScene');
+  }
+
+  /** Runs before every create(), also when the game restarts. */
+  init(): void {
+    this.hangingOn = null;
+    this.releasedFrom = null;
+    this.vx = 0;
+    this.vy = 0;
+    this.onGround = false;
+    this.score = 0;
+    this.gameOver = false;
   }
 
   create(): void {
@@ -66,6 +91,12 @@ export class MainScene extends Phaser.Scene {
         phase: i * VINE.phaseStep,
         tip: vineTip(shape, 0),
       };
+    });
+    this.enemies = ENEMY_KINDS.map((kind) => {
+      const { height, startX } = ENEMIES[kind];
+      const image = createEnemy(this, kind);
+      image.y = GROUND_Y - height / 2;
+      return { kind, image, patrol: { x: startX * GAME_WIDTH, direction: startX > 0.5 ? -1 : 1 } };
     });
     this.player = createMonkey(this, GAME_WIDTH / 2, GROUND_Y / 2);
     this.fruits = [createFruit(this, 'banana'), createFruit(this, 'apple')];
@@ -94,7 +125,13 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    if (this.gameOver) {
+      if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) this.scene.restart();
+      return;
+    }
+
     this.swingVines(time, delta);
+    this.moveEnemies(delta);
 
     if (this.hangingOn === null) {
       this.move(delta);
@@ -110,6 +147,54 @@ export class MainScene extends Phaser.Scene {
         this.scoreText.setText(formatScore(this.score));
         this.moveFruit(fruit);
       }
+    }
+
+    if (this.enemies.some((enemy) => this.touches(playerBounds, enemy))) {
+      this.showGameOver();
+    }
+  }
+
+  private moveEnemies(delta: number): void {
+    for (const enemy of this.enemies) {
+      const half = ENEMIES[enemy.kind].width / 2;
+      enemy.patrol = stepPatrol(
+        enemy.patrol,
+        ENEMIES[enemy.kind].speed,
+        delta / 1000,
+        half,
+        GAME_WIDTH - half,
+      );
+      enemy.image.x = enemy.patrol.x;
+      // Drawings face right, so flip them when walking left.
+      enemy.image.setFlipX(enemy.patrol.direction < 0);
+    }
+  }
+
+  private touches(playerBounds: Phaser.Geom.Rectangle, enemy: Enemy): boolean {
+    const hitbox = enemy.image.getBounds();
+    Phaser.Geom.Rectangle.Inflate(hitbox, -ENEMY_HITBOX_INSET, -ENEMY_HITBOX_INSET);
+    return Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, hitbox);
+  }
+
+  private showGameOver(): void {
+    this.gameOver = true;
+    this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.gameOverOverlay, GAME_OVER_OVERLAY_ALPHA)
+      .setOrigin(0);
+    const lines = [
+      { text: 'Voi ei! Apina jäi kiinni!', size: '48px', y: GAME_HEIGHT / 2 - 60 },
+      { text: formatScore(this.score), size: '32px', y: GAME_HEIGHT / 2 },
+      { text: 'Paina välilyöntiä, niin pelaat uudestaan.', size: '22px', y: GAME_HEIGHT / 2 + 60 },
+    ];
+    for (const line of lines) {
+      this.add
+        .text(GAME_WIDTH / 2, line.y, line.text, {
+          fontSize: line.size,
+          color: COLORS.text,
+          stroke: COLORS.textShadow,
+          strokeThickness: 5,
+        })
+        .setOrigin(0.5);
     }
   }
 

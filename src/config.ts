@@ -21,6 +21,13 @@ export const COLORS = {
   text: '#ffffff',
   textShadow: '#1b5e20',
   ground: 0x4e342e,
+  lionBody: 0xe0a040,
+  lionMane: 0x8d4a1d,
+  snakeBody: 0xc0ca33,
+  snakeSpots: 0x33691e,
+  snakeTongue: 0xe53935,
+  enemyEye: 0x000000,
+  gameOverOverlay: 0x000000,
   groundGrass: 0x33691e,
 } as const;
 
@@ -79,3 +86,18 @@ export const VINE = {
   grabRadius: 30,
   phaseStep: 1.3, // radians between neighbouring vines
 } as const;
+
+/**
+ * Lions and snakes walk back and forth on the ground.
+ * Sizes in pixels, speeds in pixels per second, startX as a fraction of GAME_WIDTH.
+ * `gridWidth` is the width of the grid the drawing uses.
+ */
+export const ENEMIES = {
+  lion: { width: 96, height: 67, gridWidth: 80, speed: 120, startX: 0.85 },
+  snake: { width: 86, height: 34, gridWidth: 72, speed: 70, startX: 0.15 },
+} as const;
+
+/** Enemy hit boxes are this many pixels smaller on each side, to be fair. */
+export const ENEMY_HITBOX_INSET = 10;
+
+export const GAME_OVER_OVERLAY_ALPHA = 0.6;
