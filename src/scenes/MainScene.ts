@@ -43,6 +43,7 @@ interface Enemy {
 }
 
 const HINT = '← → liiku.  ↑ tai välilyönti: hyppää!  Varo leijonaa ja käärmettä!';
+const MUTED_KEY = 'muted';
 const ENEMY_KINDS: readonly EnemyKind[] = ['lion', 'snake'];
 
 /**
@@ -142,7 +143,9 @@ export class MainScene extends Phaser.Scene {
     keyboard.on('keydown-UP', queueJump);
     keyboard.on('keydown-SPACE', queueJump);
 
-    startJungleSounds(this);
+    // Kept in the game registry, so the choice stays when the game restarts.
+    const isMuted = (): boolean => this.registry.get(MUTED_KEY) === true;
+    startJungleSounds(this, isMuted);
     const soundText = this.add
       .text(GAME_WIDTH - 16, 16, '', {
         fontSize: '20px',
@@ -152,11 +155,12 @@ export class MainScene extends Phaser.Scene {
       })
       .setOrigin(1, 0);
     const showSound = (): void => {
-      soundText.setText(this.sound.mute ? 'M: äänet päälle' : 'M: äänet pois');
+      soundText.setText(isMuted() ? 'M: äänet päälle' : 'M: äänet pois');
     };
     showSound();
-    keyboard.on('keydown-M', () => {
-      this.sound.mute = !this.sound.mute;
+    keyboard.on('keydown-M', (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      this.registry.set(MUTED_KEY, !isMuted());
       showSound();
     });
   }
