@@ -5,14 +5,19 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
-  POINTS_PER_STAR,
-  STAR_SIZE,
+  PHYSICS,
+  GROUND_Y,
+  FRUIT_TOP_Y,
+  FRUIT_SIZE,
+  POINTS_PER_FRUIT,
   VINE,
 } from '../config';
-import { clamp, randomPosition } from '../logic/bounds';
+import { randomPosition } from '../logic/bounds';
+import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
 import { drawJungle } from '../objects/JungleBackground';
+import { createFruit } from '../objects/Fruit';
 import { createMonkey } from '../objects/Monkey';
 import { createVine } from '../objects/Vine';
 
@@ -24,21 +29,25 @@ interface SwingingVine {
   tip: { x: number; y: number };
 }
 
-const HINT = 'Nuolet: liiku. Liaanin pää: roiku! Välilyönti: hyppää irti.';
+const HINT = '← → liiku.  ↑ tai välilyönti: hyppää!  Hyppää liaaniin roikkumaan.';
 
 /**
- * Jungle scene: move the monkey with the arrow keys and collect stars.
- * The monkey grabs a vine by touching its tip and lets go with space.
+ * Jungle scene: the monkey walks and jumps with gravity and collects fruit.
+ * It grabs a vine by touching its tip and jumps off with up or space,
+ * keeping the speed of the swing.
  */
 export class MainScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Image;
-  private star!: Phaser.GameObjects.Rectangle;
+  private fruits: Phaser.GameObjects.Image[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private vines: SwingingVine[] = [];
   /** The vine the monkey hangs on, or null. */
   private hangingOn: SwingingVine | null = null;
   /** Vine the monkey just let go of; it can't be grabbed again right away. */
   private releasedFrom: SwingingVine | null = null;
+  private vx = 0;
+  private vy = 0;
+  private onGround = false;
   private scoreText!: Phaser.GameObjects.Text;
   private score = 0;
 
@@ -58,9 +67,9 @@ export class MainScene extends Phaser.Scene {
         tip: vineTip(shape, 0),
       };
     });
-    this.player = createMonkey(this, GAME_WIDTH / 2, GAME_HEIGHT / 2);
-    this.star = this.add.rectangle(0, 0, STAR_SIZE, STAR_SIZE, COLORS.star);
-    this.moveStar();
+    this.player = createMonkey(this, GAME_WIDTH / 2, GROUND_Y / 2);
+    this.fruits = [createFruit(this, 'banana'), createFruit(this, 'apple')];
+    for (const fruit of this.fruits) this.moveFruit(fruit);
 
     this.scoreText = this.add.text(16, 16, formatScore(this.score), {
       fontSize: '24px',
@@ -88,20 +97,19 @@ export class MainScene extends Phaser.Scene {
     this.swingVines(time, delta);
 
     if (this.hangingOn === null) {
-      this.walk(delta);
+      this.move(delta);
       this.tryGrabVine();
     } else {
-      this.hang(this.hangingOn);
+      this.hang(this.hangingOn, delta);
     }
 
-    const touching = Phaser.Geom.Intersects.RectangleToRectangle(
-      this.player.getBounds(),
-      this.star.getBounds(),
-    );
-    if (touching) {
-      this.score = addPoints(this.score, POINTS_PER_STAR);
-      this.scoreText.setText(formatScore(this.score));
-      this.moveStar();
+    const playerBounds = this.player.getBounds();
+    for (const fruit of this.fruits) {
+      if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, fruit.getBounds())) {
+        this.score = addPoints(this.score, POINTS_PER_FRUIT);
+        this.scoreText.setText(formatScore(this.score));
+        this.moveFruit(fruit);
+      }
     }
   }
 
@@ -116,13 +124,23 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private hang(vine: SwingingVine): void {
-    const angle = vine.container.rotation;
-    // The monkey's origin is at its hands, so it holds on to the tip.
-    this.player.setPosition(vine.tip.x, vine.tip.y);
-    this.player.rotation = angle;
+  private jumpPressed(): boolean {
+    return (
+      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.space)
+    );
+  }
 
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) {
+  private hang(vine: SwingingVine, delta: number): void {
+    // The monkey's origin is at its hands, so it holds on to the tip.
+    const velocity = velocityBetween(this.player, vine.tip, delta / 1000);
+    this.player.setPosition(vine.tip.x, vine.tip.y);
+    this.player.rotation = vine.container.rotation;
+
+    if (this.jumpPressed()) {
+      // Fly off with the speed of the swing, plus a little jump.
+      this.vx = velocity.vx;
+      this.vy = velocity.vy - PHYSICS.vineJumpSpeed;
       this.hangingOn = null;
       this.releasedFrom = vine;
       this.player.rotation = 0;
@@ -144,31 +162,45 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private walk(delta: number): void {
-    const step = (PLAYER_SPEED * delta) / 1000;
-    const { width, height, displayOriginX, displayOriginY } = this.player;
+  private move(delta: number): void {
+    const wantsJump = this.jumpPressed();
+    let direction = 0;
+    if (this.cursors.left.isDown) direction -= 1;
+    if (this.cursors.right.isDown) direction += 1;
 
-    let dx = 0;
-    let dy = 0;
-    if (this.cursors.left.isDown) dx -= step;
-    if (this.cursors.right.isDown) dx += step;
-    if (this.cursors.up.isDown) dy -= step;
-    if (this.cursors.down.isDown) dy += step;
+    if (this.onGround) {
+      this.vx = direction * PLAYER_SPEED;
+      if (wantsJump) this.vy = -PHYSICS.jumpSpeed;
+    } else if (direction !== 0) {
+      // Steer in the air, but keep the speed from a vine swing.
+      this.vx = direction * Math.max(PLAYER_SPEED, Math.abs(this.vx));
+    }
 
-    this.player.x = clamp(
-      this.player.x + dx,
-      displayOriginX,
-      GAME_WIDTH - (width - displayOriginX),
+    const next = stepBody(
+      { x: this.player.x, y: this.player.y, vx: this.vx, vy: this.vy, onGround: this.onGround },
+      delta / 1000,
+      PHYSICS.gravity,
+      this.playerArea(),
     );
-    this.player.y = clamp(
-      this.player.y + dy,
-      displayOriginY,
-      GAME_HEIGHT - (height - displayOriginY),
-    );
+    this.player.setPosition(next.x, next.y);
+    this.vy = next.vy;
+    this.onGround = next.onGround;
+    if (this.onGround && direction === 0) this.vx = 0;
   }
 
-  private moveStar(): void {
-    const { x, y } = randomPosition(GAME_WIDTH, GAME_HEIGHT, STAR_SIZE);
-    this.star.setPosition(x, y);
+  /** Where the monkey's hands may be so that its whole body stays on screen. */
+  private playerArea(): Area {
+    const { width, height, displayOriginX, displayOriginY } = this.player;
+    return {
+      minX: displayOriginX,
+      maxX: GAME_WIDTH - (width - displayOriginX),
+      minY: displayOriginY,
+      maxY: GROUND_Y - (height - displayOriginY),
+    };
+  }
+
+  private moveFruit(fruit: Phaser.GameObjects.Image): void {
+    const { x, y } = randomPosition(GAME_WIDTH, GROUND_Y - FRUIT_TOP_Y, FRUIT_SIZE);
+    fruit.setPosition(x, y + FRUIT_TOP_Y);
   }
 }
