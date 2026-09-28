@@ -4,7 +4,6 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
   JUNGLE,
-  PLAYER_SIZE,
   PLAYER_SPEED,
   POINTS_PER_STAR,
   STAR_SIZE,
@@ -119,9 +118,8 @@ export class MainScene extends Phaser.Scene {
 
   private hang(vine: SwingingVine): void {
     const angle = vine.container.rotation;
-    // The monkey's head hangs just below the vine tip.
-    const pos = vineTip({ ...vine.shape, length: vine.shape.length + PLAYER_SIZE / 2 }, angle);
-    this.player.setPosition(pos.x, pos.y);
+    // The monkey's origin is at its hands, so it holds on to the tip.
+    this.player.setPosition(vine.tip.x, vine.tip.y);
     this.player.rotation = angle;
 
     if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) {
@@ -148,7 +146,7 @@ export class MainScene extends Phaser.Scene {
 
   private walk(delta: number): void {
     const step = (PLAYER_SPEED * delta) / 1000;
-    const half = PLAYER_SIZE / 2;
+    const { width, height, displayOriginX, displayOriginY } = this.player;
 
     let dx = 0;
     let dy = 0;
@@ -157,8 +155,16 @@ export class MainScene extends Phaser.Scene {
     if (this.cursors.up.isDown) dy -= step;
     if (this.cursors.down.isDown) dy += step;
 
-    this.player.x = clamp(this.player.x + dx, half, GAME_WIDTH - half);
-    this.player.y = clamp(this.player.y + dy, half, GAME_HEIGHT - half);
+    this.player.x = clamp(
+      this.player.x + dx,
+      displayOriginX,
+      GAME_WIDTH - (width - displayOriginX),
+    );
+    this.player.y = clamp(
+      this.player.y + dy,
+      displayOriginY,
+      GAME_HEIGHT - (height - displayOriginY),
+    );
   }
 
   private moveStar(): void {

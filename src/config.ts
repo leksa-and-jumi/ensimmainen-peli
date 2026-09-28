@@ -17,7 +17,7 @@ export const COLORS = {
   textShadow: '#1b5e20',
 } as const;
 
-export const PLAYER_SIZE = 48;
+export const PLAYER_WIDTH = 56;
 export const PLAYER_SPEED = 300; // pixels per second
 
 export const STAR_SIZE = 20;
