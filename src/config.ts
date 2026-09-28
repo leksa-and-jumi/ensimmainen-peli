@@ -8,6 +8,9 @@ export const COLORS = {
   sky: 0x81d4fa,
   cloud: 0xffffff,
   sun: 0xffeb3b,
+  night: 0x0d1b3e,
+  moon: 0xfff9c4,
+  star: 0xffffff,
   beak: 0xff9800,
   leaf: 0x43a047,
   leafLight: 0x66bb6a,
@@ -177,4 +180,37 @@ export const SKY_BIRDS = {
     { color: 0x1e88e5, y: 135, speed: 60, direction: -1, startX: 0.6 },
     { color: 0xfdd835, y: 195, speed: 110, direction: 1, startX: 0.4 },
   ],
+} as const;
+
+/**
+ * Day and night. One whole day (day, dusk, night, dawn) takes cycleMs.
+ * Dusk and dawn each take fadeFraction of it. At night the screen is covered
+ * with the night colour at maxShade strength. Moon and star x are fractions of GAME_WIDTH.
+ */
+export const DAY_NIGHT = {
+  cycleMs: 60000,
+  fadeFraction: 0.1,
+  maxShade: 0.6,
+  moon: { x: 0.12, y: 110, radius: 26 },
+  starRadius: 2,
+  stars: [
+    { x: 0.3, y: 60 },
+    { x: 0.38, y: 150 },
+    { x: 0.47, y: 45 },
+    { x: 0.56, y: 120 },
+    { x: 0.64, y: 70 },
+    { x: 0.73, y: 190 },
+    { x: 0.8, y: 55 },
+    { x: 0.92, y: 170 },
+    { x: 0.22, y: 200 },
+    { x: 0.05, y: 180 },
+  ],
+} as const;
+
+/** Drawing order for things that must be above the rest (bigger = more on top). */
+export const DEPTH = {
+  nightShade: 10,
+  nightSky: 11,
+  hud: 20,
+  gameOver: 30,
 } as const;

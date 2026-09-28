@@ -5,6 +5,8 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  DAY_NIGHT,
+  DEPTH,
   MONKEY_ANIMATION,
   SKY_BIRDS,
   ENEMIES,
@@ -22,6 +24,7 @@ import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic
 import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
 import { monkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
+import { darkness } from '../logic/dayNight';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
@@ -32,6 +35,7 @@ import { createFruit } from '../objects/Fruit';
 import { createMonkey, setMonkeyPose } from '../objects/Monkey';
 import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
 import { createVine } from '../objects/Vine';
+import { createSkyLights, setDarkness, type SkyLights } from '../objects/SkyLights';
 
 interface SwingingVine {
   shape: VineShape;
@@ -84,6 +88,7 @@ export class MainScene extends Phaser.Scene {
   private score = 0;
   private enemies: Enemy[] = [];
   private skyBirds: SkyBird[] = [];
+  private skyLights!: SkyLights;
   private gameOver = false;
   /** Set by a jump key press, used up by the next frame. */
   private jumpQueued = false;
@@ -107,6 +112,7 @@ export class MainScene extends Phaser.Scene {
 
   create(): void {
     drawJungle(this);
+    this.skyLights = createSkyLights(this);
     this.skyBirds = SKY_BIRDS.birds.map((bird, i) => ({
       image: createSkyBird(this, bird.color).setFlipX(bird.direction < 0),
       color: bird.color,
@@ -150,6 +156,7 @@ export class MainScene extends Phaser.Scene {
       stroke: COLORS.textShadow,
       strokeThickness: 4,
     });
+    this.scoreText.setDepth(DEPTH.hud);
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, HINT, {
         fontSize: '18px',
@@ -157,7 +164,8 @@ export class MainScene extends Phaser.Scene {
         stroke: COLORS.textShadow,
         strokeThickness: 4,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(DEPTH.hud);
 
     const keyboard = this.input.keyboard;
     if (!keyboard) {
@@ -181,7 +189,8 @@ export class MainScene extends Phaser.Scene {
         stroke: COLORS.textShadow,
         strokeThickness: 4,
       })
-      .setOrigin(1, 0);
+      .setOrigin(1, 0)
+      .setDepth(DEPTH.hud);
     const showSound = (): void => {
       soundText.setText(isMuted() ? 'M: äänet päälle' : 'M: äänet pois');
     };
@@ -199,6 +208,7 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
+    setDarkness(this.skyLights, darkness(time, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction));
     this.swingVines(time, delta);
     this.flyBirds(time, delta);
     this.moveEnemies(time, delta);
@@ -279,7 +289,8 @@ export class MainScene extends Phaser.Scene {
     this.gameOver = true;
     this.add
       .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.gameOverOverlay, GAME_OVER_OVERLAY_ALPHA)
-      .setOrigin(0);
+      .setOrigin(0)
+      .setDepth(DEPTH.gameOver);
     const lines = [
       { text: 'Voi ei! Apina jäi kiinni!', size: '48px', y: GAME_HEIGHT / 2 - 60 },
       { text: formatScore(this.score), size: '32px', y: GAME_HEIGHT / 2 },
@@ -293,7 +304,8 @@ export class MainScene extends Phaser.Scene {
           stroke: COLORS.textShadow,
           strokeThickness: 5,
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(DEPTH.gameOver);
     }
   }
 

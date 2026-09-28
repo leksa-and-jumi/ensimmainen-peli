@@ -9,13 +9,10 @@ import {
   JUNGLE,
 } from '../config';
 
-/** Draws the sky with the sun and clouds. */
+/** Draws the sky with clouds. The sun is in SkyLights, so it can set. */
 function drawSky(g: Phaser.GameObjects.Graphics): void {
   g.fillStyle(COLORS.sky);
   g.fillRect(0, 0, GAME_WIDTH, JUNGLE.skyBottomY);
-
-  g.fillStyle(COLORS.sun);
-  g.fillCircle(JUNGLE.sun.x * GAME_WIDTH, JUNGLE.sun.y, JUNGLE.sun.radius);
 
   g.fillStyle(COLORS.cloud);
   for (const cloud of JUNGLE.clouds) {
