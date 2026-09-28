@@ -40,7 +40,8 @@ import {
   type VineShape,
 } from '../logic/vine';
 import { createEnemy, setEnemyFrame, type EnemyKind } from '../objects/Enemies';
-import { drawJungle } from '../objects/JungleBackground';
+import { createJungle, slideLayers, type JungleLayers } from '../objects/JungleBackground';
+import { FallingLeaves } from '../objects/FallingLeaves';
 import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
 import { createHearts, showLives } from '../objects/Hearts';
@@ -104,6 +105,8 @@ export class MainScene extends Phaser.Scene {
   private enemies: Enemy[] = [];
   private skyBirds: SkyBird[] = [];
   private skyLights!: SkyLights;
+  private layers!: JungleLayers;
+  private leaves!: FallingLeaves;
   /** 0 = day, 1 = night. */
   private dark = 0;
   private gameOver = false;
@@ -134,8 +137,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
-    drawJungle(this);
+    this.layers = createJungle(this);
     this.skyLights = createSkyLights(this);
+    this.leaves = new FallingLeaves(this);
     this.skyBirds = SKY_BIRDS.birds.map((bird, i) => ({
       image: createSkyBird(this, bird.color).setFlipX(bird.direction < 0),
       color: bird.color,
@@ -247,6 +251,8 @@ export class MainScene extends Phaser.Scene {
       this.hang(this.hangingOn, delta);
     }
     this.animateMonkey(time);
+    slideLayers(this.layers, this.player.x);
+    this.leaves.update(delta, this.layers.near.x);
 
     const playerBounds = this.player.getBounds();
     for (const fruit of this.fruits) {
