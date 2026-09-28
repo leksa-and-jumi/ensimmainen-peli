@@ -12,7 +12,12 @@ export const COLORS = {
   monkeyFur: 0x8d5524,
   monkeyFace: 0xf1c27d,
   monkeyEye: 0x000000,
-  star: 0xffd54f,
+  banana: 0xffe135,
+  bananaTip: 0x5d4037,
+  apple: 0xe53935,
+  appleShine: 0xff8a80,
+  appleStem: 0x5d4037,
+  appleLeaf: 0x7cb342,
   text: '#ffffff',
   textShadow: '#1b5e20',
 } as const;
@@ -20,8 +25,10 @@ export const COLORS = {
 export const PLAYER_WIDTH = 56;
 export const PLAYER_SPEED = 300; // pixels per second
 
-export const STAR_SIZE = 20;
-export const POINTS_PER_STAR = 1;
+export const FRUIT_SIZE = 40;
+export const POINTS_PER_FRUIT = 1;
+/** Fruit never appears this close to the bottom, where the hint text is. */
+export const FRUIT_BOTTOM_MARGIN = 50;
 
 /** Jungle decoration layout. x positions are fractions of GAME_WIDTH. */
 export const JUNGLE = {

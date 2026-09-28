@@ -11,7 +11,7 @@ Peli julkaistaan GitHub Pagesiin aina, kun uusi versio valmistuu.
 Olet **apina** 🐒 viidakossa 🌴.
 
 - Liiku **nuolinäppäimillä**.
-- Kerää **keltaisia tähtiä**. Jokaisesta saa pisteen.
+- Kerää **banaaneja** 🍌 ja **omenoita** 🍎. Jokaisesta saa pisteen.
 - Mene **liaanin päähän**, niin apina tarttuu kiinni ja heiluu 🌿.
 - Paina **välilyöntiä**, niin apina hyppää irti.
 

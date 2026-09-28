@@ -5,14 +5,16 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
-  POINTS_PER_STAR,
-  STAR_SIZE,
+  FRUIT_BOTTOM_MARGIN,
+  FRUIT_SIZE,
+  POINTS_PER_FRUIT,
   VINE,
 } from '../config';
 import { clamp, randomPosition } from '../logic/bounds';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
 import { drawJungle } from '../objects/JungleBackground';
+import { createFruit } from '../objects/Fruit';
 import { createMonkey } from '../objects/Monkey';
 import { createVine } from '../objects/Vine';
 
@@ -27,12 +29,12 @@ interface SwingingVine {
 const HINT = 'Nuolet: liiku. Liaanin pää: roiku! Välilyönti: hyppää irti.';
 
 /**
- * Jungle scene: move the monkey with the arrow keys and collect stars.
+ * Jungle scene: move the monkey with the arrow keys and collect fruit.
  * The monkey grabs a vine by touching its tip and lets go with space.
  */
 export class MainScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Image;
-  private star!: Phaser.GameObjects.Rectangle;
+  private fruits: Phaser.GameObjects.Image[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private vines: SwingingVine[] = [];
   /** The vine the monkey hangs on, or null. */
@@ -59,8 +61,8 @@ export class MainScene extends Phaser.Scene {
       };
     });
     this.player = createMonkey(this, GAME_WIDTH / 2, GAME_HEIGHT / 2);
-    this.star = this.add.rectangle(0, 0, STAR_SIZE, STAR_SIZE, COLORS.star);
-    this.moveStar();
+    this.fruits = [createFruit(this, 'banana'), createFruit(this, 'apple')];
+    for (const fruit of this.fruits) this.moveFruit(fruit);
 
     this.scoreText = this.add.text(16, 16, formatScore(this.score), {
       fontSize: '24px',
@@ -94,14 +96,13 @@ export class MainScene extends Phaser.Scene {
       this.hang(this.hangingOn);
     }
 
-    const touching = Phaser.Geom.Intersects.RectangleToRectangle(
-      this.player.getBounds(),
-      this.star.getBounds(),
-    );
-    if (touching) {
-      this.score = addPoints(this.score, POINTS_PER_STAR);
-      this.scoreText.setText(formatScore(this.score));
-      this.moveStar();
+    const playerBounds = this.player.getBounds();
+    for (const fruit of this.fruits) {
+      if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, fruit.getBounds())) {
+        this.score = addPoints(this.score, POINTS_PER_FRUIT);
+        this.scoreText.setText(formatScore(this.score));
+        this.moveFruit(fruit);
+      }
     }
   }
 
@@ -167,8 +168,8 @@ export class MainScene extends Phaser.Scene {
     );
   }
 
-  private moveStar(): void {
-    const { x, y } = randomPosition(GAME_WIDTH, GAME_HEIGHT, STAR_SIZE);
-    this.star.setPosition(x, y);
+  private moveFruit(fruit: Phaser.GameObjects.Image): void {
+    const { x, y } = randomPosition(GAME_WIDTH, GAME_HEIGHT - FRUIT_BOTTOM_MARGIN, FRUIT_SIZE);
+    fruit.setPosition(x, y);
   }
 }
