@@ -21,10 +21,11 @@ import { randomPosition } from '../logic/bounds';
 import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic/visitor';
 import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
 import { monkeyPose } from '../logic/pose';
+import { frameIndex } from '../logic/animation';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
-import { createEnemy, type EnemyKind } from '../objects/Enemies';
+import { createEnemy, setEnemyFrame, type EnemyKind } from '../objects/Enemies';
 import { drawJungle } from '../objects/JungleBackground';
 import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
@@ -200,7 +201,7 @@ export class MainScene extends Phaser.Scene {
 
     this.swingVines(time, delta);
     this.flyBirds(time, delta);
-    this.moveEnemies(delta);
+    this.moveEnemies(time, delta);
 
     if (this.hangingOn === null) {
       this.move(delta);
@@ -253,7 +254,7 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private moveEnemies(delta: number): void {
+  private moveEnemies(time: number, delta: number): void {
     for (const enemy of this.enemies) {
       enemy.visitor = stepVisitor(enemy.visitor, delta, enemy.rules);
       const walking = enemy.visitor.phase === 'walking';
@@ -262,6 +263,8 @@ export class MainScene extends Phaser.Scene {
         enemy.image.x = enemy.visitor.x;
         // Drawings face right, so flip them when walking left.
         enemy.image.setFlipX(enemy.visitor.direction < 0);
+        const { frames, frameMs } = ENEMIES[enemy.kind];
+        setEnemyFrame(enemy.image, enemy.kind, frameIndex(time, frameMs, frames));
       }
     }
   }

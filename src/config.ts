@@ -117,10 +117,29 @@ export const VINE = {
  * After leaving they stay away for a random time between awayMinMs and awayMaxMs.
  * Sizes in pixels, speeds in pixels per second.
  * `gridWidth` is the width of the grid the drawing uses.
+ * While walking they switch between `frames` pictures, one every `frameMs`.
  */
 export const ENEMIES = {
-  lion: { width: 96, height: 67, gridWidth: 80, speed: 120, awayMinMs: 3000, awayMaxMs: 8000 },
-  snake: { width: 86, height: 34, gridWidth: 72, speed: 70, awayMinMs: 2000, awayMaxMs: 6000 },
+  lion: {
+    width: 96,
+    height: 67,
+    gridWidth: 80,
+    speed: 120,
+    awayMinMs: 3000,
+    awayMaxMs: 8000,
+    frames: 2,
+    frameMs: 200,
+  },
+  snake: {
+    width: 86,
+    height: 34,
+    gridWidth: 72,
+    speed: 70,
+    awayMinMs: 2000,
+    awayMaxMs: 6000,
+    frames: 4,
+    frameMs: 130,
+  },
 } as const;
 
 /** Enemy hit boxes are this many pixels smaller on each side, to be fair. */
