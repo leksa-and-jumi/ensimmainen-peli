@@ -5,6 +5,7 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  WIND,
   LIVES,
   DAY_NIGHT,
   DEPTH,
@@ -26,6 +27,7 @@ import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
 import { monkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
 import { darkness } from '../logic/dayNight';
+import { gustStarted, treeLean, windStrength } from '../logic/wind';
 import { blinkVisible, isProtected, loseLife } from '../logic/lives';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
@@ -40,7 +42,12 @@ import {
   type VineShape,
 } from '../logic/vine';
 import { createEnemy, setEnemyFrame, type EnemyKind } from '../objects/Enemies';
-import { createJungle, slideLayers, type JungleLayers } from '../objects/JungleBackground';
+import {
+  createJungle,
+  slideLayers,
+  swayTrees,
+  type JungleLayers,
+} from '../objects/JungleBackground';
 import { FallingLeaves } from '../objects/FallingLeaves';
 import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
@@ -107,6 +114,8 @@ export class MainScene extends Phaser.Scene {
   private skyLights!: SkyLights;
   private layers!: JungleLayers;
   private leaves!: FallingLeaves;
+  /** How hard the wind blows: 0 = calm, 1 = strongest. */
+  private wind = 0;
   /** 0 = day, 1 = night. */
   private dark = 0;
   private gameOver = false;
@@ -252,7 +261,7 @@ export class MainScene extends Phaser.Scene {
     }
     this.animateMonkey(time);
     slideLayers(this.layers, this.player.x);
-    this.leaves.update(delta, this.layers.near.x);
+    this.blowWind(time, delta);
 
     const playerBounds = this.player.getBounds();
     for (const fruit of this.fruits) {
@@ -282,6 +291,23 @@ export class MainScene extends Phaser.Scene {
       this.player.setVisible(true);
       this.showGameOver();
     }
+  }
+
+  /** The wind bends the big trees, and a gust blows leaves off them. */
+  private blowWind(time: number, delta: number): void {
+    const wind = windStrength(time, WIND.base, WIND.waves);
+    const gust = gustStarted(this.wind, wind, WIND.gustLimit);
+    this.wind = wind;
+
+    const leans = JUNGLE.trees.map((_, i) =>
+      treeLean(wind, time, i, WIND.leanPixels, WIND.flutterPixels, WIND.flutterMs),
+    );
+    swayTrees(this.layers, leans);
+    const treeTops = JUNGLE.trees.map((tree, i) => ({
+      x: tree.x * GAME_WIDTH + (leans[i] ?? 0) + this.layers.near.x,
+      y: GAME_HEIGHT - tree.height,
+    }));
+    this.leaves.update(delta, wind, gust, treeTops);
   }
 
   private animateMonkey(time: number): void {
