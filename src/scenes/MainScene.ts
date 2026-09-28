@@ -10,13 +10,14 @@ import {
 } from '../config';
 import { clamp, randomPosition } from '../logic/bounds';
 import { addPoints, formatScore } from '../logic/score';
+import { drawJungle } from '../objects/JungleBackground';
+import { createMonkey } from '../objects/Monkey';
 
 /**
- * Starter scene: move the square with the arrow keys and collect stars.
- * This is a placeholder until Julius and Leo design the real game.
+ * Jungle scene: move the monkey with the arrow keys and collect stars.
  */
 export class MainScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle;
+  private player!: Phaser.GameObjects.Image;
   private star!: Phaser.GameObjects.Rectangle;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private scoreText!: Phaser.GameObjects.Text;
@@ -27,24 +28,23 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.player = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      PLAYER_SIZE,
-      PLAYER_SIZE,
-      COLORS.player,
-    );
+    drawJungle(this);
+    this.player = createMonkey(this, GAME_WIDTH / 2, GAME_HEIGHT / 2);
     this.star = this.add.rectangle(0, 0, STAR_SIZE, STAR_SIZE, COLORS.star);
     this.moveStar();
 
     this.scoreText = this.add.text(16, 16, formatScore(this.score), {
       fontSize: '24px',
       color: COLORS.text,
+      stroke: COLORS.textShadow,
+      strokeThickness: 4,
     });
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, 'Liiku nuolinäppäimillä ja kerää tähtiä!', {
         fontSize: '18px',
         color: COLORS.text,
+        stroke: COLORS.textShadow,
+        strokeThickness: 4,
       })
       .setOrigin(0.5);
 

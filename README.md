@@ -8,10 +8,12 @@ Peli julkaistaan GitHub Pagesiin aina, kun uusi versio valmistuu.
 
 ## Miten pelataan
 
+Olet **apina** 🐒 viidakossa 🌴.
+
 - Liiku **nuolinäppäimillä**.
 - Kerää **keltaisia tähtiä**. Jokaisesta saa pisteen.
 
-_Tämä on aloituspohja. Pojat päättävät, millainen oikeasta pelistä tulee!_
+_Peli on vielä kesken. Pojat päättävät, mitä siihen tulee seuraavaksi!_
 
 ## Tekijät
 
