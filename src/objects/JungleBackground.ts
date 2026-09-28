@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, JUNGLE } from '../config';
 
-/** Draws the jungle scenery: shady ground, trees and hanging vines. */
+/** Draws the static jungle scenery: shady ground and trees. */
 export function drawJungle(scene: Phaser.Scene): void {
   const g = scene.add.graphics();
 
@@ -23,14 +23,5 @@ export function drawJungle(scene: Phaser.Scene): void {
     g.fillCircle(x + r * 0.8, top, r);
     g.fillStyle(COLORS.leafLight);
     g.fillCircle(x, top - r * 0.5, r);
-  }
-
-  g.fillStyle(COLORS.vine);
-  for (const vine of JUNGLE.vines) {
-    const x = vine.x * GAME_WIDTH;
-    g.fillRect(x - JUNGLE.vineWidth / 2, 0, JUNGLE.vineWidth, vine.length);
-    g.fillStyle(COLORS.leafLight);
-    g.fillEllipse(x, vine.length, JUNGLE.vineWidth * 4, JUNGLE.vineWidth * 2.5);
-    g.fillStyle(COLORS.vine);
   }
 }

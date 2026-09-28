@@ -47,3 +47,13 @@ export const JUNGLE = {
   ],
   vineWidth: 5,
 } as const;
+
+/** Vine swinging and grabbing. Angles are in degrees. */
+export const VINE = {
+  swingDegrees: 6,
+  hangSwingDegrees: 30,
+  periodMs: 2400,
+  swingChangeDegreesPerSecond: 20,
+  grabRadius: 30,
+  phaseStep: 1.3, // radians between neighbouring vines
+} as const;
