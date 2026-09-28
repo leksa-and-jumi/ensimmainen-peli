@@ -188,7 +188,7 @@ export const SKY_BIRDS = {
  * with the night colour at maxShade strength. Moon and star x are fractions of GAME_WIDTH.
  */
 export const DAY_NIGHT = {
-  cycleMs: 60000,
+  cycleMs: 100000, // day and night about 40 s each
   fadeFraction: 0.1,
   maxShade: 0.6,
   moon: { x: 0.12, y: 110, radius: 26 },
