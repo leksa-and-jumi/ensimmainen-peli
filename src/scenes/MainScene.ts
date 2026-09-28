@@ -89,6 +89,8 @@ export class MainScene extends Phaser.Scene {
   private enemies: Enemy[] = [];
   private skyBirds: SkyBird[] = [];
   private skyLights!: SkyLights;
+  /** 0 = day, 1 = night. */
+  private dark = 0;
   private gameOver = false;
   /** Set by a jump key press, used up by the next frame. */
   private jumpQueued = false;
@@ -208,7 +210,8 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
-    setDarkness(this.skyLights, darkness(time, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction));
+    this.dark = darkness(time, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction);
+    setDarkness(this.skyLights, this.dark);
     this.swingVines(time, delta);
     this.flyBirds(time, delta);
     this.moveEnemies(time, delta);
@@ -259,7 +262,8 @@ export class MainScene extends Phaser.Scene {
         GAME_WIDTH + half,
       );
       const bob = bobOffset(time, SKY_BIRDS.bobPixels, SKY_BIRDS.bobPeriodMs, bird.phase);
-      bird.image.setPosition(bird.x, bird.y + bob);
+      // The birds go to sleep at night.
+      bird.image.setPosition(bird.x, bird.y + bob).setAlpha(1 - this.dark);
       setSkyBirdFrame(bird.image, bird.color, frame);
     }
   }

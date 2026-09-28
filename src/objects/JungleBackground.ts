@@ -9,20 +9,10 @@ import {
   JUNGLE,
 } from '../config';
 
-/** Draws the sky with clouds. The sun is in SkyLights, so it can set. */
+/** Draws the sky. The sun and clouds are in SkyLights, so they can go away at night. */
 function drawSky(g: Phaser.GameObjects.Graphics): void {
   g.fillStyle(COLORS.sky);
   g.fillRect(0, 0, GAME_WIDTH, JUNGLE.skyBottomY);
-
-  g.fillStyle(COLORS.cloud);
-  for (const cloud of JUNGLE.clouds) {
-    const x = cloud.x * GAME_WIDTH;
-    const r = JUNGLE.cloudPuffRadius * cloud.size;
-    g.fillCircle(x - r, cloud.y, r * 0.8);
-    g.fillCircle(x, cloud.y - r * 0.4, r);
-    g.fillCircle(x + r, cloud.y, r * 0.8);
-    g.fillRect(x - r, cloud.y, r * 2, r * 0.8);
-  }
 
   // Bushy tree line where the jungle begins.
   g.fillStyle(COLORS.background);
