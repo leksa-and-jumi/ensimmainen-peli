@@ -33,14 +33,15 @@ function playChirp(
 /**
  * Jungle sounds: birds tweet and hoot now and then, from different directions.
  * The sounds are made by the computer, so there are no sound files.
+ * No new calls start while `isMuted()` is true.
  */
-export function startJungleSounds(scene: Phaser.Scene): void {
+export function startJungleSounds(scene: Phaser.Scene, isMuted: () => boolean): void {
   const sound = scene.sound;
   if (!(sound instanceof Phaser.Sound.WebAudioSoundManager)) return;
 
   const callBird = (): void => {
     // Browsers keep sound paused until the player clicks or presses a key.
-    if (sound.context.state === 'running') {
+    if (sound.context.state === 'running' && !isMuted()) {
       const notes = birdCall(pickCallKind(SOUND.birds), SOUND.birds);
       const pan = Phaser.Math.FloatBetween(-SOUND.maxPan, SOUND.maxPan);
       for (const chirp of notes) playChirp(sound, chirp, sound.context.currentTime, pan);
