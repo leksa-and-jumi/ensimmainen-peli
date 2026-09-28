@@ -5,6 +5,7 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  LIVES,
   DAY_NIGHT,
   DEPTH,
   MONKEY_ANIMATION,
@@ -25,6 +26,7 @@ import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
 import { monkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
 import { darkness } from '../logic/dayNight';
+import { blinkVisible, isProtected, loseLife } from '../logic/lives';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
@@ -32,6 +34,7 @@ import { createEnemy, setEnemyFrame, type EnemyKind } from '../objects/Enemies';
 import { drawJungle } from '../objects/JungleBackground';
 import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
+import { createHearts, showLives } from '../objects/Hearts';
 import { createMonkey, setMonkeyPose } from '../objects/Monkey';
 import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
 import { createVine } from '../objects/Vine';
@@ -92,6 +95,10 @@ export class MainScene extends Phaser.Scene {
   /** 0 = day, 1 = night. */
   private dark = 0;
   private gameOver = false;
+  private lives: number = LIVES.start;
+  /** When the monkey was last hit, or null. */
+  private hitAt: number | null = null;
+  private hearts: Phaser.GameObjects.Image[] = [];
   /** Set by a jump key press, used up by the next frame. */
   private jumpQueued = false;
 
@@ -109,6 +116,8 @@ export class MainScene extends Phaser.Scene {
     this.walking = false;
     this.score = 0;
     this.gameOver = false;
+    this.lives = LIVES.start;
+    this.hitAt = null;
     this.jumpQueued = false;
   }
 
@@ -159,6 +168,7 @@ export class MainScene extends Phaser.Scene {
       strokeThickness: 4,
     });
     this.scoreText.setDepth(DEPTH.hud);
+    this.hearts = createHearts(this);
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, HINT, {
         fontSize: '18px',
@@ -233,8 +243,23 @@ export class MainScene extends Phaser.Scene {
       }
     }
 
+    this.checkEnemyHits(time, playerBounds);
+  }
+
+  /** Touching a lion or snake costs a life, then the monkey blinks for a moment. */
+  private checkEnemyHits(time: number, playerBounds: Phaser.Geom.Rectangle): void {
+    const { protectMs, blinkMs } = LIVES;
+    this.player.setVisible(blinkVisible(time, this.hitAt, protectMs, blinkMs));
+    if (isProtected(time, this.hitAt, protectMs)) return;
+
     const visible = this.enemies.filter((enemy) => enemy.image.visible);
-    if (visible.some((enemy) => this.touches(playerBounds, enemy))) {
+    if (!visible.some((enemy) => this.touches(playerBounds, enemy))) return;
+
+    this.lives = loseLife(this.lives);
+    this.hitAt = time;
+    showLives(this.hearts, this.lives);
+    if (this.lives === 0) {
+      this.player.setVisible(true);
       this.showGameOver();
     }
   }
@@ -296,7 +321,7 @@ export class MainScene extends Phaser.Scene {
       .setOrigin(0)
       .setDepth(DEPTH.gameOver);
     const lines = [
-      { text: 'Voi ei! Apina jäi kiinni!', size: '48px', y: GAME_HEIGHT / 2 - 60 },
+      { text: 'Voi ei! Elämät loppuivat!', size: '48px', y: GAME_HEIGHT / 2 - 60 },
       { text: formatScore(this.score), size: '32px', y: GAME_HEIGHT / 2 },
       { text: 'Paina välilyöntiä, niin pelaat uudestaan.', size: '22px', y: GAME_HEIGHT / 2 + 60 },
     ];

@@ -10,6 +10,8 @@ export const COLORS = {
   sun: 0xffeb3b,
   night: 0x0d1b3e,
   moon: 0xfff9c4,
+  heart: 0xe53935,
+  heartLost: 0x9e9e9e,
   star: 0xffffff,
   beak: 0xff9800,
   leaf: 0x43a047,
@@ -213,4 +215,18 @@ export const DEPTH = {
   nightSky: 11,
   hud: 20,
   gameOver: 30,
+} as const;
+
+/**
+ * The monkey's lives, shown as hearts under the score.
+ * After a hit the monkey blinks and can't be hit again for protectMs.
+ */
+export const LIVES = {
+  start: 4,
+  protectMs: 2000,
+  blinkMs: 120,
+  heartSize: 26,
+  heartGap: 6,
+  heartsX: 16,
+  heartsY: 50,
 } as const;
