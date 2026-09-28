@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stepBody, velocityBetween, type Body } from './physics';
+import { jumpHeight, stepBody, velocityBetween, type Body } from './physics';
 
 const area = { minX: 0, maxX: 100, minY: 0, maxY: 100 };
 const body = (overrides: Partial<Body> = {}): Body => ({
@@ -51,5 +51,16 @@ describe('velocityBetween', () => {
 
   it('returns zero for no time', () => {
     expect(velocityBetween({ x: 0, y: 0 }, { x: 5, y: 5 }, 0)).toEqual({ vx: 0, vy: 0 });
+  });
+});
+
+describe('jumpHeight', () => {
+  it('goes higher with a faster jump', () => {
+    expect(jumpHeight(800, 1500)).toBeCloseTo(213.33);
+    expect(jumpHeight(400, 1500)).toBeCloseTo(53.33);
+  });
+
+  it('rejects no gravity', () => {
+    expect(() => jumpHeight(800, 0)).toThrow(RangeError);
   });
 });

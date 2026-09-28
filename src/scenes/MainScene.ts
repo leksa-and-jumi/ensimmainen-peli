@@ -10,14 +10,14 @@ import {
   GAME_OVER_OVERLAY_ALPHA,
   PHYSICS,
   GROUND_Y,
-  FRUIT_TOP_Y,
+  FRUIT_REACH_MARGIN,
   FRUIT_SIZE,
   POINTS_PER_FRUIT,
   VINE,
 } from '../config';
 import { randomPosition } from '../logic/bounds';
 import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic/visitor';
-import { stepBody, velocityBetween, type Area } from '../logic/physics';
+import { jumpHeight, stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
 import { createEnemy, type EnemyKind } from '../objects/Enemies';
@@ -323,7 +323,10 @@ export class MainScene extends Phaser.Scene {
   }
 
   private moveFruit(fruit: Phaser.GameObjects.Image): void {
-    const { x, y } = randomPosition(GAME_WIDTH, GROUND_Y - FRUIT_TOP_Y, FRUIT_SIZE);
-    fruit.setPosition(x, y + FRUIT_TOP_Y);
+    // The highest the monkey's head gets with a jump from the ground.
+    const jumpTop = GROUND_Y - this.player.height - jumpHeight(PHYSICS.jumpSpeed, PHYSICS.gravity);
+    const top = jumpTop + FRUIT_REACH_MARGIN - FRUIT_SIZE;
+    const { x, y } = randomPosition(GAME_WIDTH, GROUND_Y - top, FRUIT_SIZE);
+    fruit.setPosition(x, y + top);
   }
 }

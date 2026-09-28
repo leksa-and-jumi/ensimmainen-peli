@@ -52,8 +52,11 @@ export const GRASS_HEIGHT = 8;
 
 export const FRUIT_SIZE = 40;
 export const POINTS_PER_FRUIT = 1;
-/** Fruit never appears higher than this, so the monkey can reach it. */
-export const FRUIT_TOP_Y = 110;
+/**
+ * Fruit only appears where the monkey can reach it with a normal jump:
+ * at the top of the jump the monkey overlaps the fruit by at least this many pixels.
+ */
+export const FRUIT_REACH_MARGIN = 15;
 
 /** Jungle decoration layout. x positions are fractions of GAME_WIDTH. */
 export const JUNGLE = {

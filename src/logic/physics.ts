@@ -43,3 +43,9 @@ export function velocityBetween(
   if (dtSeconds <= 0) return { vx: 0, vy: 0 };
   return { vx: (to.x - from.x) / dtSeconds, vy: (to.y - from.y) / dtSeconds };
 }
+
+/** How high a jump goes before gravity pulls the body back down. */
+export function jumpHeight(jumpSpeed: number, gravity: number): number {
+  if (gravity <= 0) throw new RangeError(`gravity (${gravity}) must be positive`);
+  return (jumpSpeed * jumpSpeed) / (2 * gravity);
+}
