@@ -5,6 +5,9 @@ export const GAME_HEIGHT = 600;
 export const COLORS = {
   background: 0x2e7d32,
   jungleShade: 0x1b5e20,
+  sky: 0x81d4fa,
+  cloud: 0xffffff,
+  sun: 0xffeb3b,
   leaf: 0x43a047,
   leafLight: 0x66bb6a,
   trunk: 0x6d4c41,
@@ -54,11 +57,26 @@ export const FRUIT_TOP_Y = 110;
 
 /** Jungle decoration layout. x positions are fractions of GAME_WIDTH. */
 export const JUNGLE = {
+  /** The sky is above this line, the jungle below it. */
+  skyBottomY: 260,
+  /** Bushy edge where the jungle meets the sky. */
+  treeLineSpacing: 60,
+  treeLineRadius: 45,
+  /** Leafy roof at the very top, where the vines hang from. */
+  canopySpacing: 50,
+  canopyRadius: 36,
+  sun: { x: 0.88, y: 100, radius: 36 },
+  clouds: [
+    { x: 0.2, y: 110, size: 1 },
+    { x: 0.5, y: 80, size: 0.8 },
+    { x: 0.7, y: 160, size: 1.2 },
+  ],
+  cloudPuffRadius: 22,
   shadeBlobs: [
     { x: 0.15, y: 0.75, radius: 120 },
     { x: 0.55, y: 0.9, radius: 160 },
     { x: 0.85, y: 0.6, radius: 110 },
-    { x: 0.4, y: 0.35, radius: 90 },
+    { x: 0.4, y: 0.55, radius: 90 },
   ],
   trees: [
     { x: 0.05, height: 260 },
@@ -102,3 +120,17 @@ export const ENEMIES = {
 export const ENEMY_HITBOX_INSET = 10;
 
 export const GAME_OVER_OVERLAY_ALPHA = 0.6;
+
+/** Jungle sounds made by the computer. Frequencies in Hz, times in milliseconds. */
+export const SOUND = {
+  volume: 0.12,
+  fadeMs: 10,
+  maxPan: 0.8, // -1 = left speaker, 1 = right speaker
+  callMinDelayMs: 700,
+  callMaxDelayMs: 2500,
+  birds: {
+    hootChance: 0.3,
+    tweet: { minNotes: 2, maxNotes: 5, minHz: 2200, maxHz: 3600, gapMs: 110, noteMs: 70 },
+    hoot: { minHz: 380, maxHz: 520, gapMs: 350, noteMs: 260 },
+  },
+} as const;

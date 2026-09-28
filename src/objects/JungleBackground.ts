@@ -9,9 +9,45 @@ import {
   JUNGLE,
 } from '../config';
 
-/** Draws the static jungle scenery: shade, trees and the ground. */
+/** Draws the sky with the sun and clouds. */
+function drawSky(g: Phaser.GameObjects.Graphics): void {
+  g.fillStyle(COLORS.sky);
+  g.fillRect(0, 0, GAME_WIDTH, JUNGLE.skyBottomY);
+
+  g.fillStyle(COLORS.sun);
+  g.fillCircle(JUNGLE.sun.x * GAME_WIDTH, JUNGLE.sun.y, JUNGLE.sun.radius);
+
+  g.fillStyle(COLORS.cloud);
+  for (const cloud of JUNGLE.clouds) {
+    const x = cloud.x * GAME_WIDTH;
+    const r = JUNGLE.cloudPuffRadius * cloud.size;
+    g.fillCircle(x - r, cloud.y, r * 0.8);
+    g.fillCircle(x, cloud.y - r * 0.4, r);
+    g.fillCircle(x + r, cloud.y, r * 0.8);
+    g.fillRect(x - r, cloud.y, r * 2, r * 0.8);
+  }
+
+  // Bushy tree line where the jungle begins.
+  g.fillStyle(COLORS.background);
+  for (let x = 0; x <= GAME_WIDTH; x += JUNGLE.treeLineSpacing) {
+    g.fillCircle(x, JUNGLE.skyBottomY, JUNGLE.treeLineRadius);
+  }
+}
+
+/** Draws the leafy roof at the top of the screen. */
+function drawCanopy(g: Phaser.GameObjects.Graphics): void {
+  let light = false;
+  for (let x = 0; x <= GAME_WIDTH; x += JUNGLE.canopySpacing) {
+    g.fillStyle(light ? COLORS.leafLight : COLORS.leaf);
+    g.fillCircle(x, 0, JUNGLE.canopyRadius);
+    light = !light;
+  }
+}
+
+/** Draws the static scenery: sky, shade, trees, the leafy roof and the ground. */
 export function drawJungle(scene: Phaser.Scene): void {
   const g = scene.add.graphics();
+  drawSky(g);
 
   g.fillStyle(COLORS.jungleShade);
   for (const blob of JUNGLE.shadeBlobs) {
@@ -32,6 +68,8 @@ export function drawJungle(scene: Phaser.Scene): void {
     g.fillStyle(COLORS.leafLight);
     g.fillCircle(x, top - r * 0.5, r);
   }
+
+  drawCanopy(g);
 
   g.fillStyle(COLORS.ground);
   g.fillRect(0, GROUND_Y, GAME_WIDTH, GROUND_HEIGHT);
