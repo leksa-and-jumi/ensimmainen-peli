@@ -134,3 +134,21 @@ export const SOUND = {
     hoot: { minHz: 380, maxHz: 520, gapMs: 350, noteMs: 260 },
   },
 } as const;
+
+/**
+ * Colourful birds flying across the sky, only for decoration.
+ * y in pixels from the top, speed in pixels per second, startX as a fraction of GAME_WIDTH.
+ */
+export const SKY_BIRDS = {
+  width: 54,
+  height: 36,
+  gridWidth: 36,
+  flapMs: 160,
+  bobPixels: 6,
+  bobPeriodMs: 1200,
+  birds: [
+    { color: 0xe53935, y: 70, speed: 90, direction: 1, startX: 0.1 },
+    { color: 0x1e88e5, y: 135, speed: 60, direction: -1, startX: 0.6 },
+    { color: 0xfdd835, y: 195, speed: 110, direction: 1, startX: 0.4 },
+  ],
+} as const;

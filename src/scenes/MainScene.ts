@@ -5,6 +5,7 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  SKY_BIRDS,
   ENEMIES,
   ENEMY_HITBOX_INSET,
   GAME_OVER_OVERLAY_ALPHA,
@@ -17,6 +18,7 @@ import {
 } from '../config';
 import { randomPosition } from '../logic/bounds';
 import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic/visitor';
+import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
@@ -25,6 +27,7 @@ import { drawJungle } from '../objects/JungleBackground';
 import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
 import { createMonkey } from '../objects/Monkey';
+import { createSkyBird, SKY_BIRD_FRAMES } from '../objects/SkyBird';
 import { createVine } from '../objects/Vine';
 
 interface SwingingVine {
@@ -33,6 +36,15 @@ interface SwingingVine {
   amplitude: number;
   phase: number;
   tip: { x: number; y: number };
+}
+
+interface SkyBird {
+  image: Phaser.GameObjects.Image;
+  x: number;
+  y: number;
+  speed: number;
+  direction: 1 | -1;
+  phase: number;
 }
 
 interface Enemy {
@@ -66,6 +78,7 @@ export class MainScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private score = 0;
   private enemies: Enemy[] = [];
+  private skyBirds: SkyBird[] = [];
   private gameOver = false;
   /** Set by a jump key press, used up by the next frame. */
   private jumpQueued = false;
@@ -88,6 +101,14 @@ export class MainScene extends Phaser.Scene {
 
   create(): void {
     drawJungle(this);
+    this.skyBirds = SKY_BIRDS.birds.map((bird, i) => ({
+      image: createSkyBird(this, bird.color).setFlipX(bird.direction < 0),
+      x: bird.startX * GAME_WIDTH,
+      y: bird.y,
+      speed: bird.speed,
+      direction: bird.direction,
+      phase: i,
+    }));
     this.vines = JUNGLE.vines.map((v, i) => {
       const shape = { anchorX: v.x * GAME_WIDTH, length: v.length };
       return {
@@ -172,6 +193,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.swingVines(time, delta);
+    this.flyBirds(time, delta);
     this.moveEnemies(delta);
 
     if (this.hangingOn === null) {
@@ -193,6 +215,23 @@ export class MainScene extends Phaser.Scene {
     const visible = this.enemies.filter((enemy) => enemy.image.visible);
     if (visible.some((enemy) => this.touches(playerBounds, enemy))) {
       this.showGameOver();
+    }
+  }
+
+  private flyBirds(time: number, delta: number): void {
+    const half = SKY_BIRDS.width / 2;
+    const frame = SKY_BIRD_FRAMES[flapFrame(time, SKY_BIRDS.flapMs)];
+    for (const bird of this.skyBirds) {
+      bird.x = stepFlight(
+        bird.x,
+        bird.direction,
+        bird.speed,
+        delta / 1000,
+        -half,
+        GAME_WIDTH + half,
+      );
+      const bob = bobOffset(time, SKY_BIRDS.bobPixels, SKY_BIRDS.bobPeriodMs, bird.phase);
+      bird.image.setPosition(bird.x, bird.y + bob).setTexture(frame);
     }
   }
 
