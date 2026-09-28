@@ -29,7 +29,16 @@ import { darkness } from '../logic/dayNight';
 import { blinkVisible, isProtected, loseLife } from '../logic/lives';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
-import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
+import {
+  approach,
+  findGrabbableVine,
+  stepSpring,
+  swingAngle,
+  vineCurve,
+  vineTip,
+  type Spring,
+  type VineShape,
+} from '../logic/vine';
 import { createEnemy, setEnemyFrame, type EnemyKind } from '../objects/Enemies';
 import { drawJungle } from '../objects/JungleBackground';
 import { startJungleSounds } from '../objects/JungleSounds';
@@ -37,14 +46,17 @@ import { createFruit } from '../objects/Fruit';
 import { createHearts, showLives } from '../objects/Hearts';
 import { createMonkey, setMonkeyPose } from '../objects/Monkey';
 import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
-import { createVine } from '../objects/Vine';
+import { createVine, drawVine } from '../objects/Vine';
 import { createSkyLights, setDarkness, type SkyLights } from '../objects/SkyLights';
 
 interface SwingingVine {
   shape: VineShape;
-  container: Phaser.GameObjects.Container;
+  graphics: Phaser.GameObjects.Graphics;
   amplitude: number;
   phase: number;
+  angle: number;
+  /** How far the vine is stretched, like a rubber band. */
+  stretch: Spring;
   tip: { x: number; y: number };
 }
 
@@ -137,9 +149,11 @@ export class MainScene extends Phaser.Scene {
       const shape = { anchorX: v.x * GAME_WIDTH, length: v.length };
       return {
         shape,
-        container: createVine(this, shape),
+        graphics: createVine(this),
         amplitude: Phaser.Math.DegToRad(VINE.swingDegrees),
         phase: i * VINE.phaseStep,
+        angle: 0,
+        stretch: { pos: 0, vel: 0 },
         tip: vineTip(shape, 0),
       };
     });
@@ -344,8 +358,20 @@ export class MainScene extends Phaser.Scene {
       const targetDegrees = vine === this.hangingOn ? VINE.hangSwingDegrees : VINE.swingDegrees;
       vine.amplitude = approach(vine.amplitude, Phaser.Math.DegToRad(targetDegrees), maxChange);
       const angle = swingAngle(time, vine.amplitude, VINE.periodMs, vine.phase);
-      vine.container.rotation = angle;
-      vine.tip = vineTip(vine.shape, angle);
+      const angularVelocity = delta > 0 ? (angle - vine.angle) / (delta / 1000) : 0;
+      vine.angle = angle;
+
+      const hanging = vine === this.hangingOn;
+      vine.stretch = stepSpring(
+        vine.stretch,
+        hanging ? VINE.hangStretch : 0,
+        VINE.springStiffness,
+        VINE.springDamping,
+        delta / 1000,
+      );
+      const shape = { ...vine.shape, length: vine.shape.length + vine.stretch.pos };
+      vine.tip = vineTip(shape, angle);
+      drawVine(vine.graphics, vineCurve(shape, angle, angularVelocity, VINE.bendLagSeconds));
     }
   }
 
@@ -359,7 +385,7 @@ export class MainScene extends Phaser.Scene {
     // The monkey's origin is at its hands, so it holds on to the tip.
     const velocity = velocityBetween(this.player, vine.tip, delta / 1000);
     this.player.setPosition(vine.tip.x, vine.tip.y);
-    this.player.rotation = vine.container.rotation;
+    this.player.rotation = vine.angle;
 
     if (this.jumpPressed()) {
       // Fly off with the speed of the swing, plus a little jump.
@@ -377,6 +403,8 @@ export class MainScene extends Phaser.Scene {
     const index = findGrabbableVine(this.player, tips, VINE.grabRadius, ignore);
     if (index !== null) {
       this.hangingOn = this.vines[index] ?? null;
+      // The vine stretches like a rubber band when the monkey lands on it.
+      if (this.hangingOn) this.hangingOn.stretch.vel += VINE.grabBounceSpeed;
       return;
     }
     if (this.releasedFrom) {
