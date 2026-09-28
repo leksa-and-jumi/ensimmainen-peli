@@ -19,6 +19,7 @@ Olet **apina** 🐒 viidakossa 🌴.
 - Hyppää liaanista irti, niin apina lentää heilahduksen vauhdilla! 🚀
 - **Varo leijonaa 🦁 ja käärmettä 🐍!** Ne tulevat välillä viidakkoon ja menevät taas pois. Jos apina osuu niihin, peli loppuu.
 - Paina **välilyöntiä**, niin pelaat uudestaan.
+- Paina **M**, niin viidakon äänet menevät pois tai tulevat takaisin 🐦.
 
 _Peli on vielä kesken. Pojat päättävät, mitä siihen tulee seuraavaksi!_
 

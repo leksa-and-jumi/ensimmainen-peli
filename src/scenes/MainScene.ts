@@ -22,6 +22,7 @@ import { addPoints, formatScore } from '../logic/score';
 import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
 import { createEnemy, type EnemyKind } from '../objects/Enemies';
 import { drawJungle } from '../objects/JungleBackground';
+import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
 import { createMonkey } from '../objects/Monkey';
 import { createVine } from '../objects/Vine';
@@ -65,6 +66,8 @@ export class MainScene extends Phaser.Scene {
   private score = 0;
   private enemies: Enemy[] = [];
   private gameOver = false;
+  /** Set by a jump key press, used up by the next frame. */
+  private jumpQueued = false;
 
   constructor() {
     super('MainScene');
@@ -79,6 +82,7 @@ export class MainScene extends Phaser.Scene {
     this.onGround = false;
     this.score = 0;
     this.gameOver = false;
+    this.jumpQueued = false;
   }
 
   create(): void {
@@ -131,11 +135,35 @@ export class MainScene extends Phaser.Scene {
       throw new Error('Keyboard input is not available');
     }
     this.cursors = keyboard.createCursorKeys();
+    // Listen to key presses directly, so even a very quick tap is noticed.
+    const queueJump = (event: KeyboardEvent): void => {
+      if (!event.repeat) this.jumpQueued = true;
+    };
+    keyboard.on('keydown-UP', queueJump);
+    keyboard.on('keydown-SPACE', queueJump);
+
+    startJungleSounds(this);
+    const soundText = this.add
+      .text(GAME_WIDTH - 16, 16, '', {
+        fontSize: '20px',
+        color: COLORS.text,
+        stroke: COLORS.textShadow,
+        strokeThickness: 4,
+      })
+      .setOrigin(1, 0);
+    const showSound = (): void => {
+      soundText.setText(this.sound.mute ? 'M: äänet päälle' : 'M: äänet pois');
+    };
+    showSound();
+    keyboard.on('keydown-M', () => {
+      this.sound.mute = !this.sound.mute;
+      showSound();
+    });
   }
 
   update(time: number, delta: number): void {
     if (this.gameOver) {
-      if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) this.scene.restart();
+      if (this.jumpPressed()) this.scene.restart();
       return;
     }
 
@@ -217,10 +245,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   private jumpPressed(): boolean {
-    return (
-      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
-      Phaser.Input.Keyboard.JustDown(this.cursors.space)
-    );
+    const pressed = this.jumpQueued;
+    this.jumpQueued = false;
+    return pressed;
   }
 
   private hang(vine: SwingingVine, delta: number): void {
