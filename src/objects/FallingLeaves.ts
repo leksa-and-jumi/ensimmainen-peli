@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { COLORS, DEPTH, GAME_HEIGHT, GAME_WIDTH, GROUND_Y, JUNGLE, LEAVES } from '../config';
+import { COLORS, DEPTH, GAME_WIDTH, GROUND_Y, LEAVES } from '../config';
 import {
+  calmLeafDue,
   leafTilt,
   leafX,
   spawnLeaf,
@@ -16,25 +17,23 @@ const RULES: LeafRules = {
   swayPixels: LEAVES.swayPixels,
   swayPeriodMs: LEAVES.swayPeriodMs,
   spread: LEAVES.spread,
-  maxWaitMs: LEAVES.maxWaitMs,
+  windDrift: LEAVES.windDrift,
 };
 
-/** Leaves fall from the tops of the big trees and from the leafy roof. */
-function spawnPoints(nearLayerX: number): { x: number; y: number }[] {
-  const treeTops = JUNGLE.trees.map((tree) => ({
-    x: tree.x * GAME_WIDTH + nearLayerX,
-    y: GAME_HEIGHT - tree.height,
-  }));
-  const roof = LEAVES.canopySpots.map((f) => ({ x: f * GAME_WIDTH, y: LEAVES.canopyY }));
-  return [...treeTops, ...roof];
-}
+const ROOF_SPOTS = LEAVES.canopySpots.map((f) => ({ x: f * GAME_WIDTH, y: LEAVES.canopyY }));
+
+type Point = { x: number; y: number };
 
 interface LeafSprite {
   image: Phaser.GameObjects.Image;
-  leaf: FallingLeaf;
+  /** The falling leaf, or null when this leaf is waiting to be used. */
+  leaf: FallingLeaf | null;
 }
 
-/** A few leaves that keep falling from the trees, one after another. */
+/**
+ * Leaves falling from the big trees. A gust blows several off at once; in
+ * calm weather one falls now and then. The wind carries them sideways.
+ */
 export class FallingLeaves {
   private readonly sprites: LeafSprite[];
 
@@ -51,22 +50,39 @@ export class FallingLeaves {
     }
     this.sprites = Array.from({ length: LEAVES.count }, () => ({
       image: scene.add.image(0, 0, TEXTURE_KEY).setDepth(DEPTH.fallingLeaves).setVisible(false),
-      leaf: spawnLeaf(spawnPoints(0), RULES),
+      leaf: null,
     }));
   }
 
-  /** Moves the leaves. `nearLayerX` is how far the near trees have slid. */
-  update(deltaMs: number, nearLayerX: number): void {
-    for (const sprite of this.sprites) {
-      sprite.leaf = stepLeaf(sprite.leaf, deltaMs, RULES);
-      if (sprite.leaf.y > GROUND_Y) {
-        sprite.leaf = spawnLeaf(spawnPoints(nearLayerX), RULES);
-      }
-      const falling = sprite.leaf.waitMs === 0;
-      sprite.image
-        .setVisible(falling)
-        .setPosition(leafX(sprite.leaf, RULES), sprite.leaf.y)
-        .setRotation(leafTilt(sprite.leaf, RULES));
+  /**
+   * Moves the leaves. `wind` is 0–1, `gust` is true when a gust just started,
+   * and `treeTops` are where the leaves of the big trees are right now.
+   */
+  update(deltaMs: number, wind: number, gust: boolean, treeTops: readonly Point[]): void {
+    if (gust) {
+      for (let i = 0; i < LEAVES.burstCount; i++) this.release(treeTops);
+    } else if (calmLeafDue(deltaMs, LEAVES.calmPerSecond)) {
+      this.release([...treeTops, ...ROOF_SPOTS]);
     }
+
+    for (const sprite of this.sprites) {
+      if (!sprite.leaf) continue;
+      sprite.leaf = stepLeaf(sprite.leaf, deltaMs, RULES, wind);
+      const x = leafX(sprite.leaf, RULES);
+      const gone = sprite.leaf.y > GROUND_Y || x > GAME_WIDTH + LEAVES.width;
+      if (gone) {
+        sprite.leaf = null;
+        sprite.image.setVisible(false);
+        continue;
+      }
+      sprite.image.setVisible(true).setPosition(x, sprite.leaf.y);
+      sprite.image.setRotation(leafTilt(sprite.leaf, RULES));
+    }
+  }
+
+  /** Lets one waiting leaf fall from one of the spots, if any leaf is free. */
+  private release(spots: readonly Point[]): void {
+    const free = this.sprites.find((sprite) => sprite.leaf === null);
+    if (free) free.leaf = spawnLeaf(spots, RULES);
   }
 }

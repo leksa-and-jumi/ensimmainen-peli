@@ -264,19 +264,46 @@ export const PARALLAX = {
   ],
 } as const;
 
-/** Leaves falling from the trees and the leafy roof. */
+/**
+ * Leaves falling from the big trees and the leafy roof. In a gust
+ * `burstCount` leaves come off the trees at once; in calm weather a single
+ * leaf falls about `calmPerSecond` times a second. The wind carries them sideways.
+ */
 export const LEAVES = {
-  count: 7,
+  count: 16,
   width: 14,
   height: 8,
   fallSpeed: 45,
   swayPixels: 18,
   swayPeriodMs: 2200,
   spread: 60,
-  maxWaitMs: 6000,
+  windDrift: 70,
+  burstCount: 5,
+  calmPerSecond: 0.3,
   /** Leaves also fall from the leafy roof at this height, at these x fractions. */
   canopyY: 24,
   canopySpots: [0.15, 0.4, 0.65, 0.9],
+} as const;
+
+/**
+ * The wind: 0 = calm, 1 = strongest. It is `base` plus slow waves of
+ * different lengths, so it keeps changing; when the waves peak together the
+ * wind goes past `gustLimit` and there is a gust. The near trees lean up to
+ * `leanPixels` with the wind (blowing to the right) and flutter a little.
+ */
+export const WIND = {
+  base: 0.3,
+  waves: [
+    { amplitude: 0.25, periodMs: 9000, phase: 0 },
+    { amplitude: 0.15, periodMs: 4100, phase: 1.3 },
+    { amplitude: 0.08, periodMs: 1700, phase: 0.4 },
+  ],
+  gustLimit: 0.62,
+  leanPixels: 16,
+  flutterPixels: 3,
+  flutterMs: 650,
+  /** Trunk drawn as a bent line with this many points. */
+  trunkPoints: 8,
 } as const;
 
 /**

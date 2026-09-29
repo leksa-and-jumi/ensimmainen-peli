@@ -9,6 +9,7 @@ import {
   GROUND_Y,
   JUNGLE,
   PARALLAX,
+  WIND,
 } from '../config';
 import { parallaxOffset } from '../logic/parallax';
 
@@ -16,7 +17,9 @@ import { parallaxOffset } from '../logic/parallax';
 export interface JungleLayers {
   far: Phaser.GameObjects.Graphics;
   mid: Phaser.GameObjects.Graphics;
-  near: Phaser.GameObjects.Graphics;
+  /** The big trees, one drawing each, so each can sway in the wind. */
+  near: Phaser.GameObjects.Container;
+  trees: Phaser.GameObjects.Graphics[];
 }
 
 /** Layers are drawn wider than the screen, so sliding never shows an edge. */
@@ -45,22 +48,34 @@ function drawMidLayer(g: Phaser.GameObjects.Graphics): void {
   }
 }
 
-/** Near: the big trees. */
-function drawNearLayer(g: Phaser.GameObjects.Graphics): void {
-  for (const tree of JUNGLE.trees) {
-    const x = tree.x * GAME_WIDTH;
-    const top = GAME_HEIGHT - tree.height;
-    const r = JUNGLE.leafRadius;
+/**
+ * Draws one big tree. `lean` is how far the wind pushes its top to the right:
+ * the trunk bends and the leaves follow.
+ */
+function drawTree(
+  g: Phaser.GameObjects.Graphics,
+  tree: (typeof JUNGLE.trees)[number],
+  lean: number,
+): void {
+  const x = tree.x * GAME_WIDTH;
+  const top = GAME_HEIGHT - tree.height;
+  const r = JUNGLE.leafRadius;
 
-    g.fillStyle(COLORS.trunk);
-    g.fillRect(x - JUNGLE.trunkWidth / 2, top, JUNGLE.trunkWidth, tree.height);
+  // The trunk stands straight at the bottom and bends more towards the top.
+  const trunk = Array.from({ length: WIND.trunkPoints + 1 }, (_, i) => {
+    const f = i / WIND.trunkPoints;
+    return new Phaser.Math.Vector2(x + lean * f * f, GAME_HEIGHT - f * tree.height);
+  });
 
-    g.fillStyle(COLORS.leaf);
-    g.fillCircle(x - r * 0.8, top, r);
-    g.fillCircle(x + r * 0.8, top, r);
-    g.fillStyle(COLORS.leafLight);
-    g.fillCircle(x, top - r * 0.5, r);
-  }
+  g.clear();
+  g.lineStyle(JUNGLE.trunkWidth, COLORS.trunk);
+  g.strokePoints(trunk, false);
+
+  g.fillStyle(COLORS.leaf);
+  g.fillCircle(x + lean - r * 0.8, top, r);
+  g.fillCircle(x + lean + r * 0.8, top, r);
+  g.fillStyle(COLORS.leafLight);
+  g.fillCircle(x + lean * 1.2, top - r * 0.5, r);
 }
 
 /** The leafy roof at the top, where the vines hang from, and the ground. They stay still. */
@@ -94,10 +109,16 @@ export function createJungle(scene: Phaser.Scene): JungleLayers {
     draw(g);
     return g;
   };
+  const trees = JUNGLE.trees.map((tree) => {
+    const g = scene.add.graphics();
+    drawTree(g, tree, 0);
+    return g;
+  });
   const layers = {
     far: layer(DEPTH.farLayer, drawFarLayer),
     mid: layer(DEPTH.midLayer, drawMidLayer),
-    near: layer(DEPTH.nearLayer, drawNearLayer),
+    near: scene.add.container(0, 0, trees).setDepth(DEPTH.nearLayer),
+    trees,
   };
   layer(DEPTH.frame, drawFrame);
   return layers;
@@ -109,4 +130,12 @@ export function slideLayers(layers: JungleLayers, focusX: number): void {
   layers.far.x = parallaxOffset(focusX, center, PARALLAX.farFactor);
   layers.mid.x = parallaxOffset(focusX, center, PARALLAX.midFactor);
   layers.near.x = parallaxOffset(focusX, center, PARALLAX.nearFactor);
+}
+
+/** Redraws the big trees leaning in the wind (one lean in pixels per tree). */
+export function swayTrees(layers: JungleLayers, leans: readonly number[]): void {
+  JUNGLE.trees.forEach((tree, i) => {
+    const g = layers.trees[i];
+    if (g) drawTree(g, tree, leans[i] ?? 0);
+  });
 }
