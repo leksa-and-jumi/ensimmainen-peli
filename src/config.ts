@@ -17,10 +17,21 @@ export const COLORS = {
   leaf: 0x43a047,
   leafLight: 0x66bb6a,
   trunk: 0x6d4c41,
+  trunkDark: 0x4e342e,
+  trunkLight: 0x8d6e63,
+  leafDark: 0x388e3c,
+  leafOutline: 0x1b5e20,
+  groundDark: 0x3e2723,
+  grassBlade: 0x558b2f,
+  farHillsTop: 0xc8e6c9,
+  vineDark: 0x33691e,
+  vineLight: 0x8bc34a,
   vine: 0x558b2f,
   monkeyFur: 0x8d5524,
   monkeyFace: 0xf1c27d,
   monkeyEye: 0x000000,
+  monkeyEyeWhite: 0xffffff,
+  monkeyCheek: 0xf48fb1,
   banana: 0xffe135,
   bananaTip: 0x5d4037,
   apple: 0xe53935,
@@ -32,6 +43,11 @@ export const COLORS = {
   ground: 0x4e342e,
   lionBody: 0xe0a040,
   lionMane: 0x8d4a1d,
+  lionManeLight: 0xb5651d,
+  lionBelly: 0xf3d9a4,
+  lionNose: 0x4e342e,
+  lionEye: 0xffb300,
+  snakeBelly: 0xf0f4c3,
   snakeBody: 0xc0ca33,
   snakeSpots: 0x33691e,
   snakeTongue: 0xe53935,
@@ -42,10 +58,37 @@ export const COLORS = {
   farHillsLight: 0x9ccbb6,
   fallingLeaf: 0x7cb342,
   fallingLeafVein: 0x558b2f,
+  hat: 0xd7b56d,
+  hatBand: 0x5d4037,
+  glassesFrame: 0x000000,
+  glassesLens: 0x263238,
+  glassesShine: 0xffffff,
+  crown: 0xffc107,
+  crownGemRed: 0xe53935,
+  crownGemBlue: 0x1e88e5,
+  bowtie: 0xe91e63,
+  bowtieKnot: 0xad1457,
+  scarf: 0x1e88e5,
+  scarfStripe: 0xffffff,
+  shoe: 0xe53935,
+  shoeSole: 0xffffff,
+  shopPanel: 0x1b5e20,
+  shopBorder: 0xffd54f,
+  shopButton: '#ffd54f',
+  shopDisabled: '#9e9e9e',
 } as const;
 
 export const PLAYER_WIDTH = 56;
 export const PLAYER_SPEED = 300; // pixels per second
+
+/**
+ * How the monkey is drawn: every part gets a dark edge `outline` grid units
+ * wide, made `shade` percent darker than the fur, like in a cartoon.
+ */
+export const MONKEY_LOOK = {
+  outline: 1.6,
+  shade: 30,
+} as const;
 
 /** How fast the monkey's arms and legs move, in milliseconds per picture. */
 export const MONKEY_ANIMATION = {
@@ -102,6 +145,8 @@ export const JUNGLE = {
   ],
   trunkWidth: 26,
   leafRadius: 46,
+  /** The crown is `puffs` round bunches of leaves around the middle. */
+  crown: { puffs: 9, spread: 0.75, puffSize: 0.55, outline: 3 },
   vines: [
     { x: 0.18, length: 290 },
     { x: 0.46, length: 270 },
@@ -160,6 +205,12 @@ export const ENEMIES = {
     frames: 4,
     frameMs: 130,
   },
+} as const;
+
+/** How the lion and snake are drawn: dark edges `outline` grid units wide, `shade`% darker. */
+export const ANIMAL_LOOK = {
+  outline: 1.6,
+  shade: 30,
 } as const;
 
 /** Enemy hit boxes are this many pixels smaller on each side, to be fair. */
@@ -251,6 +302,7 @@ export const DEPTH = {
   fallingLeaves: -4,
   nightShade: 10,
   hud: 20,
+  shop: 25,
   gameOver: 30,
 } as const;
 
@@ -329,3 +381,57 @@ export const LIVES = {
   heartsX: 16,
   heartsY: 50,
 } as const;
+
+/**
+ * The shop. Things are bought with game points, never with real money.
+ * Clothes stay bought (also in the next game); a life fills an empty heart.
+ */
+export const SHOP = {
+  items: [
+    { id: 'hat', name: 'Hattu', price: 5, kind: 'clothes' },
+    { id: 'bowtie', name: 'Rusetti', price: 6, kind: 'clothes' },
+    { id: 'scarf', name: 'Huivi', price: 7, kind: 'clothes' },
+    { id: 'glasses', name: 'Aurinkolasit', price: 8, kind: 'clothes' },
+    { id: 'crown', name: 'Kruunu', price: 15, kind: 'clothes' },
+    { id: 'shoes', name: 'Kengät', price: 6, kind: 'clothes' },
+    { id: 'life', name: 'Elämä', price: 10, kind: 'life' },
+    { id: 'brown', name: 'Ruskea', price: 0, kind: 'color' },
+    { id: 'pink', name: 'Pinkki', price: 10, kind: 'color' },
+    { id: 'blue', name: 'Sininen', price: 10, kind: 'color' },
+    { id: 'black', name: 'Musta', price: 12, kind: 'color' },
+    { id: 'rainbow', name: 'Sateenkaari', price: 25, kind: 'color' },
+  ],
+  /** Clothes and lives on the left, monkey colours on the right. */
+  panelWidth: 760,
+  /** Room for the title, points and column titles above the items, and the close button below. */
+  headerHeight: 110,
+  footerHeight: 55,
+  panelAlpha: 0.95,
+  rowHeight: 50,
+  iconSize: 32,
+  /** Where bought clothes are remembered in this browser. */
+  saveKey: 'ensimmainen-peli:vaatteet',
+} as const;
+
+/** The same fur colour on every part of the monkey. */
+const solidFur = (color: number) =>
+  ({ tail: color, legs: color, body: color, ears: color, arms: color, head: color }) as const;
+
+/** Monkey colours from the shop. Each one gives a colour to every part of the fur. */
+export const MONKEY_COLORS = {
+  brown: solidFur(COLORS.monkeyFur),
+  pink: solidFur(0xf06292),
+  blue: solidFur(0x42a5f5),
+  black: solidFur(0x303030),
+  rainbow: {
+    tail: 0xe53935,
+    legs: 0xfb8c00,
+    body: 0xfdd835,
+    arms: 0x43a047,
+    ears: 0x1e88e5,
+    head: 0x8e24aa,
+  },
+} as const;
+
+export type MonkeyColor = keyof typeof MONKEY_COLORS;
+export const DEFAULT_MONKEY_COLOR: MonkeyColor = 'brown';
