@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { darker } from './shade';
 import { ANIMAL_LOOK, COLORS, ENEMIES } from '../config';
 
 export type EnemyKind = keyof typeof ENEMIES;
@@ -11,11 +12,6 @@ const LION_LEG_LEAN = [
 /** Where the tail tip is in each picture. */
 const LION_TAIL_TIP_Y = [16, 22] as const;
 
-/** A darker version of a colour, for outlines and shadows. */
-function darker(color: number, amount: number = ANIMAL_LOOK.shade): number {
-  return Phaser.Display.Color.ValueToColor(color).darken(amount).color;
-}
-
 /**
  * Draws a lion facing right on an 80 x 56 grid. The legs step with `frame`.
  * A cartoon with outlines, a shaggy two-tone mane, paws and a real face.
@@ -25,14 +21,14 @@ function drawLion(g: Phaser.GameObjects.Graphics, u: number, frame: number): voi
   const tailY = LION_TAIL_TIP_Y[frame % LION_TAIL_TIP_Y.length] ?? LION_TAIL_TIP_Y[0];
   const edge = ANIMAL_LOOK.outline;
   const blob = (x: number, y: number, w: number, h: number, fill: number): void => {
-    g.fillStyle(darker(fill));
+    g.fillStyle(darker(fill, ANIMAL_LOOK.shade));
     g.fillEllipse(x * u, y * u, (w + edge) * u, (h + edge) * u);
     g.fillStyle(fill);
     g.fillEllipse(x * u, y * u, w * u, h * u);
   };
   const leg = (x: number, i: number, fill: number): void => {
     const footX = x + (lean[i] ?? 0);
-    g.lineStyle((7 + edge) * u, darker(fill));
+    g.lineStyle((7 + edge) * u, darker(fill, ANIMAL_LOOK.shade));
     g.lineBetween(x * u, 36 * u, footX * u, 52 * u);
     g.lineStyle(7 * u, fill);
     g.lineBetween(x * u, 36 * u, footX * u, 52 * u);
@@ -44,7 +40,7 @@ function drawLion(g: Phaser.GameObjects.Graphics, u: number, frame: number): voi
   leg(61.5, 3, darker(COLORS.lionBody, 12));
 
   // Tail with a dark tuft.
-  g.lineStyle((3 + edge) * u, darker(COLORS.lionBody));
+  g.lineStyle((3 + edge) * u, darker(COLORS.lionBody, ANIMAL_LOOK.shade));
   g.lineBetween(15 * u, 30 * u, 5 * u, (tailY + 3) * u);
   g.lineStyle(3 * u, COLORS.lionBody);
   g.lineBetween(15 * u, 30 * u, 5 * u, (tailY + 3) * u);
@@ -133,7 +129,7 @@ function drawSnake(g: Phaser.GameObjects.Graphics, u: number, frame: number): vo
       g.fillCircle(x * u, (y + drop * widthAt(i)) * u, r * u);
     });
   };
-  tube(darker(COLORS.snakeBody), edge, 1, 0);
+  tube(darker(COLORS.snakeBody, ANIMAL_LOOK.shade), edge, 1, 0);
   tube(COLORS.snakeBody, 0, 1, 0);
   tube(COLORS.snakeBelly, 0, 0.35, 0.25);
 
@@ -147,7 +143,7 @@ function drawSnake(g: Phaser.GameObjects.Graphics, u: number, frame: number): vo
   });
 
   // Head with an eye, a nostril and a forked tongue.
-  g.fillStyle(darker(COLORS.snakeBody));
+  g.fillStyle(darker(COLORS.snakeBody, ANIMAL_LOOK.shade));
   g.fillEllipse(62 * u, 16 * u, (16 + edge) * u, (12 + edge) * u);
   g.fillStyle(COLORS.snakeBody);
   g.fillEllipse(62 * u, 16 * u, 16 * u, 12 * u);

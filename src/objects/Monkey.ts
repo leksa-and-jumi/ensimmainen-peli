@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { darker } from './shade';
 import { COLORS, MONKEY_COLORS, MONKEY_LOOK, PLAYER_WIDTH, type MonkeyColor } from '../config';
 import type { MonkeyPose } from '../logic/pose';
 
@@ -161,11 +162,6 @@ function end(points: Point[]): Point {
   const last = points[points.length - 1];
   if (!last) throw new Error('A limb needs at least one point');
   return last;
-}
-
-/** A darker version of a colour, for outlines and shadows. */
-function darker(color: number, amount: number): number {
-  return Phaser.Display.Color.ValueToColor(color).darken(amount).color;
 }
 
 /** The tail curls up behind the body and gets thinner towards the tip (grid units). */
