@@ -38,6 +38,10 @@ export const COLORS = {
   enemyEye: 0x000000,
   gameOverOverlay: 0x000000,
   groundGrass: 0x33691e,
+  farHills: 0x80b9a4,
+  farHillsLight: 0x9ccbb6,
+  fallingLeaf: 0x7cb342,
+  fallingLeafVein: 0x558b2f,
 } as const;
 
 export const PLAYER_WIDTH = 56;
@@ -206,26 +210,100 @@ export const DAY_NIGHT = {
   maxShade: 0.6,
   moon: { x: 0.12, y: 110, radius: 26 },
   starRadius: 2,
+  /** Keep stars above the hills: the night has holes where they are. */
   stars: [
     { x: 0.3, y: 60 },
-    { x: 0.38, y: 150 },
+    { x: 0.38, y: 135 },
     { x: 0.47, y: 45 },
     { x: 0.56, y: 120 },
     { x: 0.64, y: 70 },
-    { x: 0.73, y: 190 },
+    { x: 0.73, y: 130 },
     { x: 0.8, y: 55 },
-    { x: 0.92, y: 170 },
-    { x: 0.22, y: 200 },
-    { x: 0.05, y: 180 },
+    { x: 0.92, y: 125 },
+    { x: 0.22, y: 140 },
+    { x: 0.05, y: 140 },
   ],
 } as const;
 
-/** Drawing order for things that must be above the rest (bigger = more on top). */
+/**
+ * Drawing order (bigger = more on top). The background is in layers from far
+ * to near; the monkey, vines, fruit, animals and sky birds are at 0.
+ */
 export const DEPTH = {
+  sky: -40,
+  /** Sun, clouds, moon and stars: far away, behind everything else. */
+  skyLights: -35,
+  farLayer: -30,
+  midLayer: -20,
+  nearLayer: -10,
+  /** The leafy roof and the ground stay still in front of the layers. */
+  frame: -5,
+  fallingLeaves: -4,
   nightShade: 10,
-  nightSky: 11,
   hud: 20,
   gameOver: 30,
+} as const;
+
+/**
+ * Three background layers slide sideways a little when the monkey moves.
+ * Near layers slide more than far ones (factor = how much of the monkey's
+ * distance from the middle). `margin` is how much wider than the screen the
+ * layers are drawn, so their edges never show.
+ */
+export const PARALLAX = {
+  farFactor: 0.02,
+  midFactor: 0.05,
+  nearFactor: 0.1,
+  margin: 60,
+  /** Misty hills far away: circles whose tops peek above the tree line. */
+  hills: [
+    { x: 0.05, y: 330, radius: 170 },
+    { x: 0.35, y: 320, radius: 150 },
+    { x: 0.6, y: 340, radius: 190 },
+    { x: 0.92, y: 325, radius: 160 },
+  ],
+} as const;
+
+/**
+ * Leaves falling from the big trees and the leafy roof. In a gust
+ * `burstCount` leaves come off the trees at once; in calm weather a single
+ * leaf falls about `calmPerSecond` times a second. The wind carries them sideways.
+ */
+export const LEAVES = {
+  count: 16,
+  width: 14,
+  height: 8,
+  fallSpeed: 45,
+  swayPixels: 18,
+  swayPeriodMs: 2200,
+  spread: 60,
+  windDrift: 70,
+  burstCount: 5,
+  calmPerSecond: 0.3,
+  /** Leaves also fall from the leafy roof at this height, at these x fractions. */
+  canopyY: 24,
+  canopySpots: [0.15, 0.4, 0.65, 0.9],
+} as const;
+
+/**
+ * The wind: 0 = calm, 1 = strongest. It is `base` plus slow waves of
+ * different lengths, so it keeps changing; when the waves peak together the
+ * wind goes past `gustLimit` and there is a gust. The near trees lean up to
+ * `leanPixels` with the wind (blowing to the right) and flutter a little.
+ */
+export const WIND = {
+  base: 0.3,
+  waves: [
+    { amplitude: 0.25, periodMs: 9000, phase: 0 },
+    { amplitude: 0.15, periodMs: 4100, phase: 1.3 },
+    { amplitude: 0.08, periodMs: 1700, phase: 0.4 },
+  ],
+  gustLimit: 0.62,
+  leanPixels: 16,
+  flutterPixels: 3,
+  flutterMs: 650,
+  /** Trunk drawn as a bent line with this many points. */
+  trunkPoints: 8,
 } as const;
 
 /**

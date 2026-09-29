@@ -12,8 +12,8 @@ Peli julkaistaan GitHub Pagesiin aina, kun uusi versio valmistuu.
 
 Olet **apina** 🐒 viidakossa 🌴.
 
-- Kävele **nuolilla** ← →.
-- Hyppää **ylänuolella** tai **välilyönnillä**.
+- Kävele **nuolilla** ← → tai kirjaimilla **A** ja **D**.
+- Hyppää **ylänuolella**, **W**:llä tai **välilyönnillä**.
 - Kerää **banaaneja** 🍌 ja **omenoita** 🍎. Jokaisesta saa pisteen.
 - Hyppää **liaanin päähän**, niin apina tarttuu kiinni ja heiluu 🌿.
 - Hyppää liaanista irti, niin apina lentää heilahduksen vauhdilla! 🚀
