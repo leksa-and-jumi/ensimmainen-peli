@@ -34,6 +34,11 @@ export const COLORS = {
   ground: 0x4e342e,
   lionBody: 0xe0a040,
   lionMane: 0x8d4a1d,
+  lionManeLight: 0xb5651d,
+  lionBelly: 0xf3d9a4,
+  lionNose: 0x4e342e,
+  lionEye: 0xffb300,
+  snakeBelly: 0xf0f4c3,
   snakeBody: 0xc0ca33,
   snakeSpots: 0x33691e,
   snakeTongue: 0xe53935,
@@ -189,6 +194,12 @@ export const ENEMIES = {
     frames: 4,
     frameMs: 130,
   },
+} as const;
+
+/** How the lion and snake are drawn: dark edges `outline` grid units wide, `shade`% darker. */
+export const ANIMAL_LOOK = {
+  outline: 1.6,
+  shade: 30,
 } as const;
 
 /** Enemy hit boxes are this many pixels smaller on each side, to be fair. */
