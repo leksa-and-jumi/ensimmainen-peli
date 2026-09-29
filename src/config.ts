@@ -21,6 +21,8 @@ export const COLORS = {
   monkeyFur: 0x8d5524,
   monkeyFace: 0xf1c27d,
   monkeyEye: 0x000000,
+  monkeyEyeWhite: 0xffffff,
+  monkeyCheek: 0xf48fb1,
   banana: 0xffe135,
   bananaTip: 0x5d4037,
   apple: 0xe53935,
@@ -64,6 +66,15 @@ export const COLORS = {
 
 export const PLAYER_WIDTH = 56;
 export const PLAYER_SPEED = 300; // pixels per second
+
+/**
+ * How the monkey is drawn: every part gets a dark edge `outline` grid units
+ * wide, made `shade` percent darker than the fur, like in a cartoon.
+ */
+export const MONKEY_LOOK = {
+  outline: 1.6,
+  shade: 30,
+} as const;
 
 /** How fast the monkey's arms and legs move, in milliseconds per picture. */
 export const MONKEY_ANIMATION = {
