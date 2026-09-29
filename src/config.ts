@@ -42,6 +42,15 @@ export const COLORS = {
   farHillsLight: 0x9ccbb6,
   fallingLeaf: 0x7cb342,
   fallingLeafVein: 0x558b2f,
+  hat: 0xd7b56d,
+  hatBand: 0x5d4037,
+  glassesFrame: 0x000000,
+  glassesLens: 0x263238,
+  glassesShine: 0xffffff,
+  shopPanel: 0x1b5e20,
+  shopBorder: 0xffd54f,
+  shopButton: '#ffd54f',
+  shopDisabled: '#9e9e9e',
 } as const;
 
 export const PLAYER_WIDTH = 56;
@@ -251,6 +260,7 @@ export const DEPTH = {
   fallingLeaves: -4,
   nightShade: 10,
   hud: 20,
+  shop: 25,
   gameOver: 30,
 } as const;
 
@@ -328,4 +338,23 @@ export const LIVES = {
   heartGap: 6,
   heartsX: 16,
   heartsY: 50,
+} as const;
+
+/**
+ * The shop. Things are bought with game points, never with real money.
+ * Clothes stay bought (also in the next game); a life fills an empty heart.
+ */
+export const SHOP = {
+  items: [
+    { id: 'hat', name: 'Hattu', price: 5, kind: 'clothes' },
+    { id: 'glasses', name: 'Aurinkolasit', price: 8, kind: 'clothes' },
+    { id: 'life', name: 'Elämä', price: 10, kind: 'life' },
+  ],
+  panelWidth: 600,
+  panelHeight: 330,
+  panelAlpha: 0.95,
+  rowHeight: 62,
+  iconSize: 40,
+  /** Where bought clothes are remembered in this browser. */
+  saveKey: 'ensimmainen-peli:vaatteet',
 } as const;

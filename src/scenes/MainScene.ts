@@ -28,6 +28,7 @@ import { monkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
 import { darkness } from '../logic/dayNight';
 import { gustStarted, treeLean, windStrength } from '../logic/wind';
+import { buy, toggleWorn, type ShopItem, type Wallet } from '../logic/shop';
 import { blinkVisible, isProtected, loseLife } from '../logic/lives';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
@@ -51,7 +52,10 @@ import {
 import { FallingLeaves } from '../objects/FallingLeaves';
 import { playGameOverBeeps, startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
-import { createHearts, showLives } from '../objects/Hearts';
+import { createHearts, HEART_TEXTURE, showLives } from '../objects/Hearts';
+import { MonkeyClothes } from '../objects/Clothes';
+import { loadClothes, saveClothes } from '../objects/SavedClothes';
+import { ShopPanel } from '../objects/ShopPanel';
 import { createMonkey, setMonkeyPose } from '../objects/Monkey';
 import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
 import { createVine, drawVine } from '../objects/Vine';
@@ -128,6 +132,12 @@ export class MainScene extends Phaser.Scene {
   private hearts: Phaser.GameObjects.Image[] = [];
   /** Set by a jump key press, used up by the next frame. */
   private jumpQueued = false;
+  private shop!: ShopPanel;
+  private clothes!: MonkeyClothes;
+  private owned: string[] = [];
+  private worn: string[] = [];
+  /** How long the game has been paused for the shop, so time skips it. */
+  private pausedMs = 0;
 
   constructor() {
     super('MainScene');
@@ -146,6 +156,7 @@ export class MainScene extends Phaser.Scene {
     this.lives = LIVES.start;
     this.hitAt = null;
     this.jumpQueued = false;
+    this.pausedMs = 0;
   }
 
   create(): void {
@@ -188,6 +199,11 @@ export class MainScene extends Phaser.Scene {
       return { kind, image, rules, visitor: { phase: 'away', timeLeftMs: awayTime(rules) } };
     });
     this.player = createMonkey(this, GAME_WIDTH / 2, GROUND_Y / 2);
+    const saved = loadClothes();
+    this.owned = saved.owned;
+    this.worn = saved.worn;
+    this.clothes = new MonkeyClothes(this);
+    this.clothes.setWorn(this.worn);
     this.fruits = [createFruit(this, 'banana'), createFruit(this, 'apple')];
     for (const fruit of this.fruits) this.moveFruit(fruit);
 
@@ -244,6 +260,71 @@ export class MainScene extends Phaser.Scene {
       this.registry.set(MUTED_KEY, !isMuted());
       showSound();
     });
+
+    this.shop = new ShopPanel(this, HEART_TEXTURE, {
+      choose: (item) => this.chooseInShop(item),
+      close: () => this.toggleShop(),
+    });
+    this.add
+      .text(GAME_WIDTH - 16, 46, '[K] Kauppa', {
+        fontSize: '20px',
+        color: COLORS.shopButton,
+        stroke: COLORS.textShadow,
+        strokeThickness: 4,
+      })
+      .setOrigin(1, 0)
+      .setDepth(DEPTH.hud)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.toggleShop());
+    keyboard.on('keydown-K', (event: KeyboardEvent) => {
+      if (!event.repeat) this.toggleShop();
+    });
+    (['ONE', 'TWO', 'THREE'] as const).forEach((key, i) => {
+      keyboard.on(`keydown-${key}`, () => {
+        const item = this.shop.itemAt(i);
+        if (this.shop.isOpen && item) this.chooseInShop(item);
+      });
+    });
+  }
+
+  private wallet(): Wallet {
+    return {
+      score: this.score,
+      lives: this.lives,
+      maxLives: LIVES.start,
+      owned: this.owned,
+      worn: this.worn,
+    };
+  }
+
+  /** Opens or closes the shop. The game waits while the shop is open. */
+  private toggleShop(): void {
+    if (this.gameOver) return;
+    if (this.shop.isOpen) {
+      this.shop.hide();
+      // A space pressed in the shop should not make the monkey jump.
+      this.jumpQueued = false;
+    } else {
+      this.shop.show(this.wallet());
+    }
+  }
+
+  /** Buys the item, or puts bought clothes on or off. */
+  private chooseInShop(item: ShopItem): void {
+    const before = this.wallet();
+    const alreadyOwned = item.kind === 'clothes' && before.owned.includes(item.id);
+    const after = alreadyOwned ? toggleWorn(before, item.id) : buy(item, before);
+
+    this.score = after.score;
+    this.scoreText.setText(formatScore(this.score));
+    this.lives = after.lives;
+    showLives(this.hearts, this.lives);
+    this.owned = [...after.owned];
+    this.worn = [...after.worn];
+    saveClothes({ owned: this.owned, worn: this.worn });
+    this.clothes.setWorn(this.worn);
+    this.clothes.follow(this.player);
+    this.shop.refresh(after);
   }
 
   update(time: number, delta: number): void {
@@ -251,12 +332,18 @@ export class MainScene extends Phaser.Scene {
       if (this.jumpPressed()) this.scene.restart();
       return;
     }
+    if (this.shop.isOpen) {
+      this.pausedMs += delta;
+      return;
+    }
+    // Game time without the moments spent in the shop.
+    const now = time - this.pausedMs;
 
-    this.dark = darkness(time, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction);
+    this.dark = darkness(now, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction);
     setDarkness(this.skyLights, this.dark);
-    this.swingVines(time, delta);
-    this.flyBirds(time, delta);
-    this.moveEnemies(time, delta);
+    this.swingVines(now, delta);
+    this.flyBirds(now, delta);
+    this.moveEnemies(now, delta);
 
     if (this.hangingOn === null) {
       this.move(delta);
@@ -264,9 +351,9 @@ export class MainScene extends Phaser.Scene {
     } else {
       this.hang(this.hangingOn, delta);
     }
-    this.animateMonkey(time);
+    this.animateMonkey(now);
     slideLayers(this.layers, this.player.x);
-    this.blowWind(time, delta);
+    this.blowWind(now, delta);
 
     const playerBounds = this.player.getBounds();
     for (const fruit of this.fruits) {
@@ -277,7 +364,8 @@ export class MainScene extends Phaser.Scene {
       }
     }
 
-    this.checkEnemyHits(time, playerBounds);
+    this.checkEnemyHits(now, playerBounds);
+    this.clothes.follow(this.player);
   }
 
   /** Touching a lion or snake costs a life, then the monkey blinks for a moment. */
