@@ -27,6 +27,15 @@ Olet **apina** 🐒 viidakossa 🌴.
 
 _Peli on vielä kesken. Pojat päättävät, mitä siihen tulee seuraavaksi!_
 
+### Puhelimella 📱
+
+Peliä voi pelata myös puhelimella tai tabletilla. Käännä puhelin **vaakasuoraan**.
+
+- ⬅️ ➡️ (alhaalla vasemmalla): kävele
+- ⬆️ (alhaalla oikealla): hyppää
+- Napauta **Kauppa** tai **äänet pois**.
+- Kun peli loppuu, napauta ruutua, niin pelaat uudestaan.
+
 ## Tekijät
 
 - **Pelisuunnittelu:** Julius ja Leo

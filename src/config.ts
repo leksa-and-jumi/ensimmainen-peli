@@ -76,6 +76,8 @@ export const COLORS = {
   shopBorder: 0xffd54f,
   shopButton: '#ffd54f',
   shopDisabled: '#9e9e9e',
+  touchButton: 0x000000,
+  touchArrow: 0xffffff,
 } as const;
 
 export const PLAYER_WIDTH = 56;
@@ -441,4 +443,13 @@ export const GAME_TITLE = {
   text: 'Apina Ping Pong',
   showMs: 2000,
   fadeMs: 1000,
+} as const;
+
+/** Buttons on the screen for phones: walk left, walk right (bottom left) and jump (bottom right). */
+export const TOUCH = {
+  buttonRadius: 44,
+  margin: 16,
+  gap: 14,
+  alpha: 0.35,
+  pressedAlpha: 0.6,
 } as const;

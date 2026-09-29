@@ -74,7 +74,7 @@ export class ShopPanel {
   private readonly pointsText: Phaser.GameObjects.Text;
   private readonly rows: { item: ShopItem; button: Phaser.GameObjects.Text }[] = [];
 
-  constructor(scene: Phaser.Scene, heartTexture: string, actions: ShopActions) {
+  constructor(scene: Phaser.Scene, heartTexture: string, actions: ShopActions, closeLabel: string) {
     const { panelWidth: w, headerHeight, footerHeight, rowHeight, iconSize } = SHOP;
     const items: ShopItem[] = SHOP.items.map((item) => ({ ...item }));
     const columns = [
@@ -132,7 +132,7 @@ export class ShopPanel {
 
     parts.push(
       scene.add
-        .text(0, h / 2 - 28, '[K] Takaisin peliin', {
+        .text(0, h / 2 - 28, closeLabel, {
           ...TEXT_STYLE,
           fontSize: '20px',
           color: COLORS.shopButton,
