@@ -30,6 +30,7 @@ import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
 import { monkeyPose, type MonkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
 import { darkness } from '../logic/dayNight';
+import { walkDirection } from '../logic/controls';
 import { titleAlpha } from '../logic/title';
 import { gustStarted, treeLean, windStrength } from '../logic/wind';
 import { buy, chooseColor, isOwned, toggleWorn, type ShopItem, type Wallet } from '../logic/shop';
@@ -63,6 +64,7 @@ import { ShopPanel } from '../objects/ShopPanel';
 import { createMonkey, setMonkeyPose } from '../objects/Monkey';
 import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
 import { createVine, drawVine } from '../objects/Vine';
+import { isTouchScreen, TouchControls } from '../objects/TouchControls';
 import { createSkyLights, setDarkness, type SkyLights } from '../objects/SkyLights';
 
 interface SwingingVine {
@@ -94,6 +96,8 @@ interface Enemy {
 }
 
 const HINT = '← → tai A D: liiku.  ↑, W tai välilyönti: hyppää!  Varo petoja!';
+/** On phones the buttons show what to do, so the hint is shorter. */
+const TOUCH_HINT = 'Varo petoja!';
 const MUTED_KEY = 'muted';
 const ENEMY_KINDS: readonly EnemyKind[] = ['lion', 'snake'];
 
@@ -146,6 +150,8 @@ export class MainScene extends Phaser.Scene {
   /** How long the game has been paused for the shop, so time skips it. */
   private pausedMs = 0;
   private titleText!: Phaser.GameObjects.Text;
+  /** Buttons on the screen, only on phones and tablets. */
+  private touch: TouchControls | null = null;
   /** Game time when this game started, for fading the name away. */
   private startedAt: number | null = null;
 
@@ -236,8 +242,9 @@ export class MainScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(DEPTH.hud);
+    const touchScreen = isTouchScreen(this);
     this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, HINT, {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, touchScreen ? TOUCH_HINT : HINT, {
         fontSize: '18px',
         color: COLORS.text,
         stroke: COLORS.textShadow,
@@ -260,6 +267,11 @@ export class MainScene extends Phaser.Scene {
     keyboard.on('keydown-UP', queueJump);
     keyboard.on('keydown-SPACE', queueJump);
     keyboard.on('keydown-W', queueJump);
+    this.touch = touchScreen ? new TouchControls(this, () => (this.jumpQueued = true)) : null;
+    // After the game is over, a tap anywhere starts a new game.
+    this.input.on('pointerdown', () => {
+      if (this.gameOver) this.jumpQueued = true;
+    });
 
     const isMuted = (): boolean => this.isMuted();
     startJungleSounds(this, isMuted);
@@ -271,23 +283,33 @@ export class MainScene extends Phaser.Scene {
         strokeThickness: 4,
       })
       .setOrigin(1, 0)
-      .setDepth(DEPTH.hud);
+      .setDepth(DEPTH.hud)
+      .setInteractive({ useHandCursor: true });
+    const key = (letter: string): string => (touchScreen ? '' : `${letter}: `);
     const showSound = (): void => {
-      soundText.setText(isMuted() ? 'M: äänet päälle' : 'M: äänet pois');
+      soundText.setText(`${key('M')}äänet ${isMuted() ? 'päälle' : 'pois'}`);
     };
-    showSound();
-    keyboard.on('keydown-M', (event: KeyboardEvent) => {
-      if (event.repeat) return;
+    const toggleSound = (): void => {
       this.registry.set(MUTED_KEY, !isMuted());
       showSound();
+    };
+    showSound();
+    soundText.on('pointerdown', toggleSound);
+    keyboard.on('keydown-M', (event: KeyboardEvent) => {
+      if (!event.repeat) toggleSound();
     });
 
-    this.shop = new ShopPanel(this, HEART_TEXTURE, {
-      choose: (item) => this.chooseInShop(item),
-      close: () => this.toggleShop(),
-    });
+    this.shop = new ShopPanel(
+      this,
+      HEART_TEXTURE,
+      {
+        choose: (item) => this.chooseInShop(item),
+        close: () => this.toggleShop(),
+      },
+      touchScreen ? 'Takaisin peliin' : '[K] Takaisin peliin',
+    );
     this.add
-      .text(GAME_WIDTH - 16, 46, '[K] Kauppa', {
+      .text(GAME_WIDTH - 16, 46, touchScreen ? 'Kauppa' : '[K] Kauppa', {
         fontSize: '20px',
         color: COLORS.shopButton,
         stroke: COLORS.textShadow,
@@ -491,7 +513,13 @@ export class MainScene extends Phaser.Scene {
     const lines = [
       { text: 'Voi ei! Elämät loppuivat!', size: '48px', y: GAME_HEIGHT / 2 - 60 },
       { text: formatScore(this.score), size: '32px', y: GAME_HEIGHT / 2 },
-      { text: 'Paina välilyöntiä, niin pelaat uudestaan.', size: '22px', y: GAME_HEIGHT / 2 + 60 },
+      {
+        text: isTouchScreen(this)
+          ? 'Napauta ruutua, niin pelaat uudestaan.'
+          : 'Paina välilyöntiä, niin pelaat uudestaan.',
+        size: '22px',
+        y: GAME_HEIGHT / 2 + 60,
+      },
     ];
     for (const line of lines) {
       this.add
@@ -570,9 +598,10 @@ export class MainScene extends Phaser.Scene {
 
   private move(delta: number): void {
     const wantsJump = this.jumpPressed();
-    let direction = 0;
-    if (this.cursors.left.isDown || this.letterLeft.isDown) direction -= 1;
-    if (this.cursors.right.isDown || this.letterRight.isDown) direction += 1;
+    const direction = walkDirection(
+      this.cursors.left.isDown || this.letterLeft.isDown || (this.touch?.left ?? false),
+      this.cursors.right.isDown || this.letterRight.isDown || (this.touch?.right ?? false),
+    );
     this.walking = direction !== 0;
 
     if (this.onGround) {
