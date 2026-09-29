@@ -5,6 +5,7 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  GAME_TITLE,
   MONKEY_COLORS,
   type MonkeyColor,
   WIND,
@@ -29,6 +30,7 @@ import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
 import { monkeyPose, type MonkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
 import { darkness } from '../logic/dayNight';
+import { titleAlpha } from '../logic/title';
 import { gustStarted, treeLean, windStrength } from '../logic/wind';
 import { buy, chooseColor, isOwned, toggleWorn, type ShopItem, type Wallet } from '../logic/shop';
 import { blinkVisible, isProtected, loseLife } from '../logic/lives';
@@ -143,6 +145,9 @@ export class MainScene extends Phaser.Scene {
   private pose: MonkeyPose = 'stand';
   /** How long the game has been paused for the shop, so time skips it. */
   private pausedMs = 0;
+  private titleText!: Phaser.GameObjects.Text;
+  /** Game time when this game started, for fading the name away. */
+  private startedAt: number | null = null;
 
   constructor() {
     super('MainScene');
@@ -162,6 +167,7 @@ export class MainScene extends Phaser.Scene {
     this.hitAt = null;
     this.jumpQueued = false;
     this.pausedMs = 0;
+    this.startedAt = null;
   }
 
   create(): void {
@@ -221,6 +227,15 @@ export class MainScene extends Phaser.Scene {
     });
     this.scoreText.setDepth(DEPTH.hud);
     this.hearts = createHearts(this);
+    this.titleText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 3, GAME_TITLE.text, {
+        fontSize: '56px',
+        color: COLORS.shopButton,
+        stroke: COLORS.textShadow,
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5)
+      .setDepth(DEPTH.hud);
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, HINT, {
         fontSize: '18px',
@@ -343,6 +358,8 @@ export class MainScene extends Phaser.Scene {
     }
     // Game time without the moments spent in the shop.
     const now = time - this.pausedMs;
+    this.startedAt ??= now;
+    this.titleText.setAlpha(titleAlpha(now - this.startedAt, GAME_TITLE.showMs, GAME_TITLE.fadeMs));
 
     this.dark = darkness(now, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction);
     setDarkness(this.skyLights, this.dark);

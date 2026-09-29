@@ -1,9 +1,9 @@
 {
   "name": "ensimmainen-peli",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.4.0",
   "type": "module",
-  "description": "Julius ja Leo - ensimmäinen peli",
+  "description": "Apina Ping Pong - Juliuksen ja Leon ensimmäinen peli",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

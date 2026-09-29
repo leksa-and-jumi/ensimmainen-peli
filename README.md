@@ -1,4 +1,6 @@
-# Ensimmäinen peli 🎮
+# Apina Ping Pong 🐒🏓
+
+Juliuksen ja Leon ensimmäinen peli.
 
 Julius ja Leo suunnittelevat, Claude rakentaa.
 

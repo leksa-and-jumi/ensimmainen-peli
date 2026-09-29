@@ -435,3 +435,10 @@ export const MONKEY_COLORS = {
 
 export type MonkeyColor = keyof typeof MONKEY_COLORS;
 export const DEFAULT_MONKEY_COLOR: MonkeyColor = 'brown';
+
+/** The game's name, shown big at the start of every game and then faded away. */
+export const GAME_TITLE = {
+  text: 'Apina Ping Pong',
+  showMs: 2000,
+  fadeMs: 1000,
+} as const;
