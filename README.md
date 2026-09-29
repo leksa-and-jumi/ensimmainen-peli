@@ -1,4 +1,6 @@
-# Ensimmäinen peli 🎮
+# Apina Ping Pong 🐒🏓
+
+Juliuksen ja Leon ensimmäinen peli.
 
 Julius ja Leo suunnittelevat, Claude rakentaa.
 
@@ -21,6 +23,7 @@ Olet **apina** 🐒 viidakossa 🌴.
 - Apinalla on **4 elämää** ❤️❤️❤️❤️. Jokainen osuma leijonaan tai käärmeeseen vie yhden. Kun elämät loppuvat, peli loppuu.
 - Paina **välilyöntiä**, niin pelaat uudestaan.
 - Paina **M**, niin viidakon äänet menevät pois tai tulevat takaisin 🐦.
+- Paina **K** tai klikkaa **Kauppa**, niin pääset kauppaan 🛒. Siellä voi ostaa **pelin pisteillä** apinalle hatun, rusetin, huivin, aurinkolasit, kruunun tai kengät, uuden sydämen tai uuden värin (pinkki, sininen, musta tai sateenkaari 🌈). Kaupassa ei käytetä oikeaa rahaa.
 
 _Peli on vielä kesken. Pojat päättävät, mitä siihen tulee seuraavaksi!_
 

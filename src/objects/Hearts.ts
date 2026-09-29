@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { COLORS, DEPTH, LIVES } from '../config';
 
-const FULL = 'heart-full';
+/** A full heart picture, also used as the life icon in the shop. */
+export const HEART_TEXTURE = 'heart-full';
+const FULL = HEART_TEXTURE;
 const EMPTY = 'heart-empty';
 
 /** Draws a heart on a 24 x 22 grid. */

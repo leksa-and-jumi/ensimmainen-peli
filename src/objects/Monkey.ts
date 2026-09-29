@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { COLORS, PLAYER_WIDTH } from '../config';
+import { darker } from './shade';
+import { COLORS, MONKEY_COLORS, MONKEY_LOOK, PLAYER_WIDTH, type MonkeyColor } from '../config';
 import type { MonkeyPose } from '../logic/pose';
 
 /** The monkey is drawn on a 64 x 88 grid and scaled to PLAYER_WIDTH. */
@@ -134,7 +135,27 @@ const POSES: Record<MonkeyPose, Limbs> = {
   },
 };
 
-const textureKey = (pose: MonkeyPose): string => `monkey-${pose}`;
+const textureKey = (color: MonkeyColor, pose: MonkeyPose): string => `monkey-${color}-${pose}`;
+
+/** Where the two feet are drawn (grid units): just past the ends of the legs. */
+function footCenters(limbs: Limbs): { left: Point; right: Point } {
+  const [lx, ly] = end(limbs.leftLeg);
+  const [rx, ry] = end(limbs.rightLeg);
+  return { left: [lx - 2, ly + 1], right: [rx + 2, ry + 1] };
+}
+
+/**
+ * Where the feet are in a picture, measured from the hands (the monkey's
+ * origin), in grid units. Shoes use this to stay on the feet.
+ */
+export function feetFromHands(pose: MonkeyPose): { left: Point; right: Point } {
+  const { left, right } = footCenters(POSES[pose]);
+  const center = GRID_WIDTH / 2;
+  return {
+    left: [left[0] - center, left[1] - HANDS_Y],
+    right: [right[0] - center, right[1] - HANDS_Y],
+  };
+}
 
 /** The last point of a limb: where the hand or foot goes. */
 function end(points: Point[]): Point {
@@ -143,89 +164,144 @@ function end(points: Point[]): Point {
   return last;
 }
 
-/** Draws one picture of the monkey into a texture. */
-function createMonkeyTexture(scene: Phaser.Scene, pose: MonkeyPose): void {
-  const key = textureKey(pose);
+/** The tail curls up behind the body and gets thinner towards the tip (grid units). */
+const TAIL: Point[] = [
+  [40, 70],
+  [46, 74],
+  [52, 74],
+  [57, 70],
+  [59, 64],
+  [57, 59],
+  [53, 58],
+  [51, 61],
+];
+
+/**
+ * Draws one picture of the monkey in the given colour into a texture.
+ * It is a cartoon, but with outlines, a shaped face, real-looking eyes and a
+ * tapering tail, so it looks a bit more like a real monkey.
+ */
+function createMonkeyTexture(scene: Phaser.Scene, color: MonkeyColor, pose: MonkeyPose): void {
+  const key = textureKey(color, pose);
   if (scene.textures.exists(key)) return;
 
+  const fur = MONKEY_COLORS[color];
   const limbs = POSES[pose];
   const u = PLAYER_WIDTH / GRID_WIDTH;
+  const { outline, shade } = MONKEY_LOOK;
   const g = scene.add.graphics();
-  const limb = (points: Point[]): void => {
-    g.lineStyle(7 * u, COLORS.monkeyFur);
-    g.strokePoints(
-      points.map(([x, y]) => new Phaser.Math.Vector2(x * u, y * u)),
-      false,
-    );
+  const vectors = (points: Point[]) =>
+    points.map(([x, y]) => new Phaser.Math.Vector2(x * u, y * u));
+
+  /** A limb: a dark edge first, then the fur on top. */
+  const limb = (points: Point[], furColor: number, width = 7): void => {
+    g.lineStyle((width + outline) * u, darker(furColor, shade));
+    g.strokePoints(vectors(points), false);
+    g.lineStyle(width * u, furColor);
+    g.strokePoints(vectors(points), false);
+  };
+  /** A filled round shape with a dark edge. */
+  const blob = (x: number, y: number, w: number, h: number, fill: number): void => {
+    g.fillStyle(darker(fill, shade));
+    g.fillEllipse(x * u, y * u, (w + outline) * u, (h + outline) * u);
+    g.fillStyle(fill);
+    g.fillEllipse(x * u, y * u, w * u, h * u);
   };
 
-  // Curly tail
-  g.lineStyle(5 * u, COLORS.monkeyFur);
-  g.beginPath();
-  g.moveTo(40 * u, 70 * u);
-  g.lineTo(50.4 * u, 72.9 * u);
-  g.arc(52 * u, 64 * u, 9 * u, Phaser.Math.DegToRad(100), Phaser.Math.DegToRad(330));
-  g.strokePath();
+  // Tail: thick at the body, thin at the tip.
+  TAIL.slice(1).forEach(([x, y], i) => {
+    const prev = TAIL[i] ?? TAIL[0];
+    if (!prev) return;
+    const width = 5 - (3 * i) / TAIL.length;
+    limb([prev, [x, y]], fur.tail, width);
+  });
 
-  // Legs and feet
-  limb(limbs.leftLeg);
-  limb(limbs.rightLeg);
-  g.fillStyle(COLORS.monkeyFace);
-  const [lx, ly] = end(limbs.leftLeg);
-  const [rx, ry] = end(limbs.rightLeg);
-  g.fillEllipse((lx - 2) * u, (ly + 1) * u, 10 * u, 5 * u);
-  g.fillEllipse((rx + 2) * u, (ry + 1) * u, 10 * u, 5 * u);
+  // Legs and long, hand-like feet.
+  limb(limbs.leftLeg, fur.legs);
+  limb(limbs.rightLeg, fur.legs);
+  const feet = footCenters(limbs);
+  for (const [fx, fy] of [feet.left, feet.right]) blob(fx, fy, 11, 5, COLORS.monkeyFace);
 
-  // Body and belly
-  g.fillStyle(COLORS.monkeyFur);
-  g.fillEllipse(32 * u, 60 * u, 28 * u, 36 * u);
+  // Body: rounder at the bottom, with a lighter belly and chest.
+  blob(32, 61, 28, 34, fur.body);
+  blob(32, 51, 23, 18, fur.body);
   g.fillStyle(COLORS.monkeyFace);
-  g.fillEllipse(32 * u, 63 * u, 16 * u, 22 * u);
+  g.fillEllipse(32 * u, 63 * u, 15 * u, 21 * u);
 
-  // Ears
-  g.fillStyle(COLORS.monkeyFur);
-  g.fillCircle(15 * u, 27 * u, 7 * u);
-  g.fillCircle(49 * u, 27 * u, 7 * u);
+  // Ears with a lighter inside.
+  blob(15, 28, 13, 14, fur.ears);
+  blob(49, 28, 13, 14, fur.ears);
   g.fillStyle(COLORS.monkeyFace);
-  g.fillCircle(15 * u, 27 * u, 3.5 * u);
-  g.fillCircle(49 * u, 27 * u, 3.5 * u);
+  g.fillEllipse(15.5 * u, 28.5 * u, 7 * u, 8 * u);
+  g.fillEllipse(48.5 * u, 28.5 * u, 7 * u, 8 * u);
 
-  // Arms and hands
-  limb(limbs.leftArm);
-  limb(limbs.rightArm);
-  g.fillStyle(COLORS.monkeyFace);
+  // Arms, with hands that have a little thumb.
+  limb(limbs.leftArm, fur.arms);
+  limb(limbs.rightArm, fur.arms);
   for (const arm of [limbs.leftArm, limbs.rightArm]) {
     const [hx, hy] = end(arm);
-    g.fillCircle(hx * u, hy * u, 4.5 * u);
+    blob(hx, hy, 9, 9, COLORS.monkeyFace);
+    g.fillStyle(COLORS.monkeyFace);
+    g.fillCircle((hx + (hx < 32 ? 3 : -3)) * u, (hy - 2) * u, 2 * u);
   }
 
-  // Head
-  g.fillStyle(COLORS.monkeyFur);
-  g.fillCircle(32 * u, 30 * u, 17 * u);
+  // Head with a fluffy tuft on top.
+  blob(32, 30, 34, 33, fur.head);
+  g.fillStyle(fur.head);
+  g.fillTriangle(27 * u, 16 * u, 32 * u, 10 * u, 35 * u, 16 * u);
+  g.fillTriangle(31 * u, 16 * u, 38 * u, 11 * u, 39 * u, 18 * u);
 
-  // Face
+  // Face: a heart shape around the eyes and a round snout.
   g.fillStyle(COLORS.monkeyFace);
-  g.fillEllipse(32 * u, 35 * u, 24 * u, 19 * u);
-  g.fillCircle(26 * u, 26 * u, 6 * u);
-  g.fillCircle(38 * u, 26 * u, 6 * u);
+  g.fillCircle(26.5 * u, 27 * u, 7 * u);
+  g.fillCircle(37.5 * u, 27 * u, 7 * u);
+  g.fillEllipse(32 * u, 36.5 * u, 22 * u, 15 * u);
+  g.fillStyle(COLORS.monkeyCheek, 0.5);
+  g.fillCircle(22.5 * u, 34 * u, 2.5 * u);
+  g.fillCircle(41.5 * u, 34 * u, 2.5 * u);
 
-  // Eyes and smile
+  // Brows, eyes with a shine, nose and smile.
+  g.lineStyle(1.5 * u, darker(fur.head, shade));
+  for (const x of [26.5, 37.5]) {
+    g.beginPath();
+    g.arc(x * u, 26 * u, 5 * u, Phaser.Math.DegToRad(200), Phaser.Math.DegToRad(340));
+    g.strokePath();
+  }
+  for (const x of [26.5, 37.5]) {
+    g.fillStyle(COLORS.monkeyEyeWhite);
+    g.fillEllipse(x * u, 27.5 * u, 5.5 * u, 6 * u);
+    g.fillStyle(COLORS.monkeyEye);
+    g.fillCircle((x + 0.4) * u, 28 * u, 2.2 * u);
+    g.fillStyle(COLORS.monkeyEyeWhite);
+    g.fillCircle((x + 1.1) * u, 27.2 * u, 0.8 * u);
+  }
   g.fillStyle(COLORS.monkeyEye);
-  g.fillCircle(26.5 * u, 26.5 * u, 2.4 * u);
-  g.fillCircle(37.5 * u, 26.5 * u, 2.4 * u);
-  g.lineStyle(2 * u, COLORS.monkeyEye);
+  g.fillCircle(30.8 * u, 33.5 * u, 0.9 * u);
+  g.fillCircle(33.2 * u, 33.5 * u, 0.9 * u);
+  g.lineStyle(1.6 * u, COLORS.monkeyEye);
   g.beginPath();
-  g.arc(32 * u, 35 * u, 6 * u, Phaser.Math.DegToRad(20), Phaser.Math.DegToRad(160));
+  g.arc(32 * u, 36 * u, 5 * u, Phaser.Math.DegToRad(25), Phaser.Math.DegToRad(155));
   g.strokePath();
 
   g.generateTexture(key, GRID_WIDTH * u, GRID_HEIGHT * u);
   g.destroy();
 }
 
-/** Shows the given picture of the monkey. */
-export function setMonkeyPose(monkey: Phaser.GameObjects.Image, pose: MonkeyPose): void {
-  const key = textureKey(pose);
-  if (monkey.texture.key !== key) monkey.setTexture(key);
+/** Makes all the pictures of the monkey in one colour (only the first time). */
+function createMonkeyTextures(scene: Phaser.Scene, color: MonkeyColor): void {
+  for (const pose of Object.keys(POSES) as MonkeyPose[]) createMonkeyTexture(scene, color, pose);
+}
+
+/** Shows the given picture of the monkey, in the given colour. */
+export function setMonkeyPose(
+  monkey: Phaser.GameObjects.Image,
+  pose: MonkeyPose,
+  color: MonkeyColor,
+): void {
+  const key = textureKey(color, pose);
+  if (monkey.texture.key === key) return;
+  createMonkeyTextures(monkey.scene, color);
+  monkey.setTexture(key);
 }
 
 /**
@@ -233,7 +309,12 @@ export function setMonkeyPose(monkey: Phaser.GameObjects.Image, pose: MonkeyPose
  * Its origin is where the hands hold a vine, so it hangs from a vine tip naturally.
  * All pictures are the same size, so the origin stays in the same place.
  */
-export function createMonkey(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image {
-  for (const pose of Object.keys(POSES) as MonkeyPose[]) createMonkeyTexture(scene, pose);
-  return scene.add.image(x, y, textureKey('stand')).setOrigin(0.5, HANDS_Y / GRID_HEIGHT);
+export function createMonkey(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  color: MonkeyColor,
+): Phaser.GameObjects.Image {
+  createMonkeyTextures(scene, color);
+  return scene.add.image(x, y, textureKey(color, 'stand')).setOrigin(0.5, HANDS_Y / GRID_HEIGHT);
 }

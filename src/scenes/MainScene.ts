@@ -5,6 +5,9 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  GAME_TITLE,
+  MONKEY_COLORS,
+  type MonkeyColor,
   WIND,
   LIVES,
   DAY_NIGHT,
@@ -24,10 +27,12 @@ import {
 import { randomPosition } from '../logic/bounds';
 import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic/visitor';
 import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
-import { monkeyPose } from '../logic/pose';
+import { monkeyPose, type MonkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
 import { darkness } from '../logic/dayNight';
+import { titleAlpha } from '../logic/title';
 import { gustStarted, treeLean, windStrength } from '../logic/wind';
+import { buy, chooseColor, isOwned, toggleWorn, type ShopItem, type Wallet } from '../logic/shop';
 import { blinkVisible, isProtected, loseLife } from '../logic/lives';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
@@ -49,9 +54,12 @@ import {
   type JungleLayers,
 } from '../objects/JungleBackground';
 import { FallingLeaves } from '../objects/FallingLeaves';
-import { startJungleSounds } from '../objects/JungleSounds';
+import { playGameOverBeeps, startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
-import { createHearts, showLives } from '../objects/Hearts';
+import { createHearts, HEART_TEXTURE, showLives } from '../objects/Hearts';
+import { MonkeyClothes } from '../objects/Clothes';
+import { loadClothes, saveClothes } from '../objects/SavedClothes';
+import { ShopPanel } from '../objects/ShopPanel';
 import { createMonkey, setMonkeyPose } from '../objects/Monkey';
 import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
 import { createVine, drawVine } from '../objects/Vine';
@@ -128,6 +136,18 @@ export class MainScene extends Phaser.Scene {
   private hearts: Phaser.GameObjects.Image[] = [];
   /** Set by a jump key press, used up by the next frame. */
   private jumpQueued = false;
+  private shop!: ShopPanel;
+  private clothes!: MonkeyClothes;
+  private owned: string[] = [];
+  private worn: string[] = [];
+  private color: MonkeyColor = 'brown';
+  /** The monkey's picture right now; the shoes follow its feet. */
+  private pose: MonkeyPose = 'stand';
+  /** How long the game has been paused for the shop, so time skips it. */
+  private pausedMs = 0;
+  private titleText!: Phaser.GameObjects.Text;
+  /** Game time when this game started, for fading the name away. */
+  private startedAt: number | null = null;
 
   constructor() {
     super('MainScene');
@@ -146,6 +166,8 @@ export class MainScene extends Phaser.Scene {
     this.lives = LIVES.start;
     this.hitAt = null;
     this.jumpQueued = false;
+    this.pausedMs = 0;
+    this.startedAt = null;
   }
 
   create(): void {
@@ -187,7 +209,13 @@ export class MainScene extends Phaser.Scene {
       // Everyone starts away, so the monkey gets a calm start.
       return { kind, image, rules, visitor: { phase: 'away', timeLeftMs: awayTime(rules) } };
     });
-    this.player = createMonkey(this, GAME_WIDTH / 2, GROUND_Y / 2);
+    const saved = loadClothes();
+    this.owned = saved.owned;
+    this.worn = saved.worn;
+    this.color = saved.color;
+    this.player = createMonkey(this, GAME_WIDTH / 2, GROUND_Y / 2, this.color);
+    this.clothes = new MonkeyClothes(this);
+    this.clothes.setWorn(this.worn);
     this.fruits = [createFruit(this, 'banana'), createFruit(this, 'apple')];
     for (const fruit of this.fruits) this.moveFruit(fruit);
 
@@ -199,6 +227,15 @@ export class MainScene extends Phaser.Scene {
     });
     this.scoreText.setDepth(DEPTH.hud);
     this.hearts = createHearts(this);
+    this.titleText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 3, GAME_TITLE.text, {
+        fontSize: '56px',
+        color: COLORS.shopButton,
+        stroke: COLORS.textShadow,
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5)
+      .setDepth(DEPTH.hud);
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, HINT, {
         fontSize: '18px',
@@ -224,8 +261,7 @@ export class MainScene extends Phaser.Scene {
     keyboard.on('keydown-SPACE', queueJump);
     keyboard.on('keydown-W', queueJump);
 
-    // Kept in the game registry, so the choice stays when the game restarts.
-    const isMuted = (): boolean => this.registry.get(MUTED_KEY) === true;
+    const isMuted = (): boolean => this.isMuted();
     startJungleSounds(this, isMuted);
     const soundText = this.add
       .text(GAME_WIDTH - 16, 16, '', {
@@ -245,6 +281,70 @@ export class MainScene extends Phaser.Scene {
       this.registry.set(MUTED_KEY, !isMuted());
       showSound();
     });
+
+    this.shop = new ShopPanel(this, HEART_TEXTURE, {
+      choose: (item) => this.chooseInShop(item),
+      close: () => this.toggleShop(),
+    });
+    this.add
+      .text(GAME_WIDTH - 16, 46, '[K] Kauppa', {
+        fontSize: '20px',
+        color: COLORS.shopButton,
+        stroke: COLORS.textShadow,
+        strokeThickness: 4,
+      })
+      .setOrigin(1, 0)
+      .setDepth(DEPTH.hud)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.toggleShop());
+    keyboard.on('keydown-K', (event: KeyboardEvent) => {
+      if (!event.repeat) this.toggleShop();
+    });
+  }
+
+  private wallet(): Wallet {
+    return {
+      score: this.score,
+      lives: this.lives,
+      maxLives: LIVES.start,
+      owned: this.owned,
+      worn: this.worn,
+      color: this.color,
+    };
+  }
+
+  /** Opens or closes the shop. The game waits while the shop is open. */
+  private toggleShop(): void {
+    if (this.gameOver) return;
+    if (this.shop.isOpen) {
+      this.shop.hide();
+      // A space pressed in the shop should not make the monkey jump.
+      this.jumpQueued = false;
+    } else {
+      this.shop.show(this.wallet());
+    }
+  }
+
+  /** Buys the item, puts bought clothes on or off, or changes the monkey's colour. */
+  private chooseInShop(item: ShopItem): void {
+    const before = this.wallet();
+    let after: Wallet;
+    if (!isOwned(item, before)) after = buy(item, before);
+    else if (item.kind === 'color') after = chooseColor(item, before);
+    else after = toggleWorn(before, item.id);
+
+    this.score = after.score;
+    this.scoreText.setText(formatScore(this.score));
+    this.lives = after.lives;
+    showLives(this.hearts, this.lives);
+    this.owned = [...after.owned];
+    this.worn = [...after.worn];
+    if (after.color in MONKEY_COLORS) this.color = after.color as MonkeyColor;
+    saveClothes({ owned: this.owned, worn: this.worn, color: this.color });
+    setMonkeyPose(this.player, this.pose, this.color);
+    this.clothes.setWorn(this.worn);
+    this.clothes.follow(this.player, this.pose);
+    this.shop.refresh(after);
   }
 
   update(time: number, delta: number): void {
@@ -252,12 +352,20 @@ export class MainScene extends Phaser.Scene {
       if (this.jumpPressed()) this.scene.restart();
       return;
     }
+    if (this.shop.isOpen) {
+      this.pausedMs += delta;
+      return;
+    }
+    // Game time without the moments spent in the shop.
+    const now = time - this.pausedMs;
+    this.startedAt ??= now;
+    this.titleText.setAlpha(titleAlpha(now - this.startedAt, GAME_TITLE.showMs, GAME_TITLE.fadeMs));
 
-    this.dark = darkness(time, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction);
+    this.dark = darkness(now, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction);
     setDarkness(this.skyLights, this.dark);
-    this.swingVines(time, delta);
-    this.flyBirds(time, delta);
-    this.moveEnemies(time, delta);
+    this.swingVines(now, delta);
+    this.flyBirds(now, delta);
+    this.moveEnemies(now, delta);
 
     if (this.hangingOn === null) {
       this.move(delta);
@@ -265,9 +373,9 @@ export class MainScene extends Phaser.Scene {
     } else {
       this.hang(this.hangingOn, delta);
     }
-    this.animateMonkey(time);
+    this.animateMonkey(now);
     slideLayers(this.layers, this.player.x);
-    this.blowWind(time, delta);
+    this.blowWind(now, delta);
 
     const playerBounds = this.player.getBounds();
     for (const fruit of this.fruits) {
@@ -278,7 +386,8 @@ export class MainScene extends Phaser.Scene {
       }
     }
 
-    this.checkEnemyHits(time, playerBounds);
+    this.checkEnemyHits(now, playerBounds);
+    this.clothes.follow(this.player, this.pose);
   }
 
   /** Touching a lion or snake costs a life, then the monkey blinks for a moment. */
@@ -323,7 +432,8 @@ export class MainScene extends Phaser.Scene {
       walking: this.walking,
     };
     const pose = monkeyPose(state, time, MONKEY_ANIMATION.stepMs, MONKEY_ANIMATION.kickMs);
-    setMonkeyPose(this.player, pose);
+    this.pose = pose;
+    setMonkeyPose(this.player, pose, this.color);
   }
 
   private flyBirds(time: number, delta: number): void {
@@ -366,8 +476,14 @@ export class MainScene extends Phaser.Scene {
     return Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, hitbox);
   }
 
+  /** Kept in the game registry, so the choice stays when the game restarts. */
+  private isMuted(): boolean {
+    return this.registry.get(MUTED_KEY) === true;
+  }
+
   private showGameOver(): void {
     this.gameOver = true;
+    if (!this.isMuted()) playGameOverBeeps(this);
     this.add
       .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.gameOverOverlay, GAME_OVER_OVERLAY_ALPHA)
       .setOrigin(0)
