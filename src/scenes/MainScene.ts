@@ -26,7 +26,7 @@ import {
 import { randomPosition } from '../logic/bounds';
 import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic/visitor';
 import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
-import { monkeyPose } from '../logic/pose';
+import { monkeyPose, type MonkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
 import { darkness } from '../logic/dayNight';
 import { gustStarted, treeLean, windStrength } from '../logic/wind';
@@ -139,6 +139,8 @@ export class MainScene extends Phaser.Scene {
   private owned: string[] = [];
   private worn: string[] = [];
   private color: MonkeyColor = 'brown';
+  /** The monkey's picture right now; the shoes follow its feet. */
+  private pose: MonkeyPose = 'stand';
   /** How long the game has been paused for the shop, so time skips it. */
   private pausedMs = 0;
 
@@ -324,9 +326,9 @@ export class MainScene extends Phaser.Scene {
     this.worn = [...after.worn];
     if (after.color in MONKEY_COLORS) this.color = after.color as MonkeyColor;
     saveClothes({ owned: this.owned, worn: this.worn, color: this.color });
-    setMonkeyPose(this.player, 'stand', this.color);
+    setMonkeyPose(this.player, this.pose, this.color);
     this.clothes.setWorn(this.worn);
-    this.clothes.follow(this.player);
+    this.clothes.follow(this.player, this.pose);
     this.shop.refresh(after);
   }
 
@@ -368,7 +370,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.checkEnemyHits(now, playerBounds);
-    this.clothes.follow(this.player);
+    this.clothes.follow(this.player, this.pose);
   }
 
   /** Touching a lion or snake costs a life, then the monkey blinks for a moment. */
@@ -413,6 +415,7 @@ export class MainScene extends Phaser.Scene {
       walking: this.walking,
     };
     const pose = monkeyPose(state, time, MONKEY_ANIMATION.stepMs, MONKEY_ANIMATION.kickMs);
+    this.pose = pose;
     setMonkeyPose(this.player, pose, this.color);
   }
 

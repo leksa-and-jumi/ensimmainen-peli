@@ -136,6 +136,26 @@ const POSES: Record<MonkeyPose, Limbs> = {
 
 const textureKey = (color: MonkeyColor, pose: MonkeyPose): string => `monkey-${color}-${pose}`;
 
+/** Where the two feet are drawn (grid units): just past the ends of the legs. */
+function footCenters(limbs: Limbs): { left: Point; right: Point } {
+  const [lx, ly] = end(limbs.leftLeg);
+  const [rx, ry] = end(limbs.rightLeg);
+  return { left: [lx - 2, ly + 1], right: [rx + 2, ry + 1] };
+}
+
+/**
+ * Where the feet are in a picture, measured from the hands (the monkey's
+ * origin), in grid units. Shoes use this to stay on the feet.
+ */
+export function feetFromHands(pose: MonkeyPose): { left: Point; right: Point } {
+  const { left, right } = footCenters(POSES[pose]);
+  const center = GRID_WIDTH / 2;
+  return {
+    left: [left[0] - center, left[1] - HANDS_Y],
+    right: [right[0] - center, right[1] - HANDS_Y],
+  };
+}
+
 /** The last point of a limb: where the hand or foot goes. */
 function end(points: Point[]): Point {
   const last = points[points.length - 1];
@@ -172,10 +192,8 @@ function createMonkeyTexture(scene: Phaser.Scene, color: MonkeyColor, pose: Monk
   limb(limbs.leftLeg, fur.legs);
   limb(limbs.rightLeg, fur.legs);
   g.fillStyle(COLORS.monkeyFace);
-  const [lx, ly] = end(limbs.leftLeg);
-  const [rx, ry] = end(limbs.rightLeg);
-  g.fillEllipse((lx - 2) * u, (ly + 1) * u, 10 * u, 5 * u);
-  g.fillEllipse((rx + 2) * u, (ry + 1) * u, 10 * u, 5 * u);
+  const feet = footCenters(limbs);
+  for (const [fx, fy] of [feet.left, feet.right]) g.fillEllipse(fx * u, fy * u, 10 * u, 5 * u);
 
   // Body and belly
   g.fillStyle(fur.body);

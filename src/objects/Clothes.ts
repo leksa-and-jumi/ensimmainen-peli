@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, PLAYER_WIDTH } from '../config';
+import type { MonkeyPose } from '../logic/pose';
+import { feetFromHands } from './Monkey';
 
 /** Clothes are drawn on the same grid as the monkey (64 wide), so they fit its head. */
 const U = PLAYER_WIDTH / 64;
@@ -12,6 +14,8 @@ interface ClothesDrawing {
   anchor: [number, number];
   /** …and how far that point is from the monkey's hands (monkey grid units). */
   offset: [number, number];
+  /** Shoes go on both feet and move with them, so they don't use `offset`. */
+  onFeet?: boolean;
   draw: (g: Phaser.GameObjects.Graphics) => void;
 }
 
@@ -78,6 +82,21 @@ const DRAWINGS: Record<string, ClothesDrawing> = {
       g.fillRect(11 * U, 11 * U, 22 * U, 3 * U);
     },
   },
+  // A red sneaker with a white sole, drawn pointing right (the left one is flipped).
+  shoes: {
+    width: 14,
+    height: 9,
+    anchor: [7, 4],
+    offset: [0, 0],
+    onFeet: true,
+    draw: (g) => {
+      g.fillStyle(COLORS.shoe);
+      g.fillEllipse(7 * U, 4 * U, 13 * U, 7 * U);
+      g.fillStyle(COLORS.shoeSole);
+      g.fillRect(0.5 * U, 6 * U, 13 * U, 2.5 * U);
+      g.fillCircle(11 * U, 3 * U, 1.3 * U);
+    },
+  },
   // A golden crown with gems.
   crown: {
     width: 30,
@@ -116,35 +135,49 @@ export function clothesTexture(scene: Phaser.Scene, id: string): string {
 }
 
 /** The clothes the monkey wears. They follow it around, also when it hangs tilted. */
+type Side = 'left' | 'right';
+
+interface Piece {
+  id: string;
+  image: Phaser.GameObjects.Image;
+  drawing: ClothesDrawing;
+  /** For shoes: which foot. */
+  side?: Side;
+}
+
+/** The clothes the monkey wears. They follow it around, also when it hangs tilted. */
 export class MonkeyClothes {
-  private readonly pieces: {
-    id: string;
-    image: Phaser.GameObjects.Image;
-    drawing: ClothesDrawing;
-  }[];
+  private readonly pieces: Piece[];
   private worn: readonly string[] = [];
 
   constructor(scene: Phaser.Scene) {
-    this.pieces = Object.entries(DRAWINGS).map(([id, drawing]) => ({
-      id,
-      drawing,
-      image: scene.add
+    const image = (id: string, drawing: ClothesDrawing) =>
+      scene.add
         .image(0, 0, clothesTexture(scene, id))
         .setOrigin(drawing.anchor[0] / drawing.width, drawing.anchor[1] / drawing.height)
-        .setVisible(false),
-    }));
+        .setVisible(false);
+    this.pieces = Object.entries(DRAWINGS).flatMap(([id, drawing]): Piece[] =>
+      drawing.onFeet
+        ? [
+            { id, drawing, side: 'left', image: image(id, drawing).setFlipX(true) },
+            { id, drawing, side: 'right', image: image(id, drawing) },
+          ]
+        : [{ id, drawing, image: image(id, drawing) }],
+    );
   }
 
   setWorn(worn: readonly string[]): void {
     this.worn = worn;
   }
 
-  /** Moves the clothes onto the monkey. */
-  follow(monkey: Phaser.GameObjects.Image): void {
+  /** Moves the clothes onto the monkey. `pose` tells where its feet are right now. */
+  follow(monkey: Phaser.GameObjects.Image, pose: MonkeyPose): void {
     const cos = Math.cos(monkey.rotation);
     const sin = Math.sin(monkey.rotation);
-    for (const { id, image, drawing } of this.pieces) {
-      const [ox, oy] = [drawing.offset[0] * U, drawing.offset[1] * U];
+    const feet = feetFromHands(pose);
+    for (const { id, image, drawing, side } of this.pieces) {
+      const [gx, gy] = side ? feet[side] : drawing.offset;
+      const [ox, oy] = [gx * U, gy * U];
       image
         .setPosition(monkey.x + ox * cos - oy * sin, monkey.y + ox * sin + oy * cos)
         .setRotation(monkey.rotation)
