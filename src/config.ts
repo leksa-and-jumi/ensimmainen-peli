@@ -179,6 +179,16 @@ export const SOUND = {
     tweet: { minNotes: 2, maxNotes: 5, minHz: 2200, maxHz: 3600, gapMs: 110, noteMs: 70 },
     hoot: { minHz: 380, maxHz: 520, gapMs: 350, noteMs: 260 },
   },
+  /** Piip, piip, piiiip when the game is over. A square wave sounds like a game beep. */
+  gameOver: {
+    volume: 0.08,
+    count: 3,
+    firstHz: 880,
+    stepRatio: 0.75,
+    beepMs: 160,
+    gapMs: 260,
+    lastBeepMs: 450,
+  },
 } as const;
 
 /**

@@ -49,7 +49,7 @@ import {
   type JungleLayers,
 } from '../objects/JungleBackground';
 import { FallingLeaves } from '../objects/FallingLeaves';
-import { startJungleSounds } from '../objects/JungleSounds';
+import { playGameOverBeeps, startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
 import { createHearts, showLives } from '../objects/Hearts';
 import { createMonkey, setMonkeyPose } from '../objects/Monkey';
@@ -224,8 +224,7 @@ export class MainScene extends Phaser.Scene {
     keyboard.on('keydown-SPACE', queueJump);
     keyboard.on('keydown-W', queueJump);
 
-    // Kept in the game registry, so the choice stays when the game restarts.
-    const isMuted = (): boolean => this.registry.get(MUTED_KEY) === true;
+    const isMuted = (): boolean => this.isMuted();
     startJungleSounds(this, isMuted);
     const soundText = this.add
       .text(GAME_WIDTH - 16, 16, '', {
@@ -366,8 +365,14 @@ export class MainScene extends Phaser.Scene {
     return Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, hitbox);
   }
 
+  /** Kept in the game registry, so the choice stays when the game restarts. */
+  private isMuted(): boolean {
+    return this.registry.get(MUTED_KEY) === true;
+  }
+
   private showGameOver(): void {
     this.gameOver = true;
+    if (!this.isMuted()) playGameOverBeeps(this);
     this.add
       .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.gameOverOverlay, GAME_OVER_OVERLAY_ALPHA)
       .setOrigin(0)

@@ -1,25 +1,33 @@
 import Phaser from 'phaser';
 import { SOUND } from '../config';
+import { beepNotes } from '../logic/beeps';
 import { birdCall, nextCallDelayMs, pickCallKind, type Chirp } from '../logic/birdCalls';
 
-/** Plays one whistle with a soft start and end, placed left or right by `pan`. */
+/**
+ * Plays one note with a soft start and end, placed left or right by `pan`.
+ * A sine wave sounds like a bird whistle, a square wave like a game beep.
+ */
 function playChirp(
   sound: Phaser.Sound.WebAudioSoundManager,
   chirp: Chirp,
   startAt: number,
   pan: number,
+  volume: number = SOUND.volume,
+  wave: OscillatorType = 'sine',
 ): void {
   const ctx = sound.context;
   const start = startAt + chirp.startMs / 1000;
   const end = start + chirp.durationMs / 1000;
 
   const osc = ctx.createOscillator();
+  osc.type = wave;
   osc.frequency.setValueAtTime(chirp.fromHz, start);
   osc.frequency.exponentialRampToValueAtTime(chirp.toHz, end);
 
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, start);
-  gain.gain.linearRampToValueAtTime(SOUND.volume, start + SOUND.fadeMs / 1000);
+  gain.gain.linearRampToValueAtTime(volume, start + SOUND.fadeMs / 1000);
+  gain.gain.setValueAtTime(volume, end - SOUND.fadeMs / 1000);
   gain.gain.linearRampToValueAtTime(0, end);
 
   const panner = ctx.createStereoPanner();
@@ -49,4 +57,14 @@ export function startJungleSounds(scene: Phaser.Scene, isMuted: () => boolean): 
     scene.time.delayedCall(nextCallDelayMs(SOUND.callMinDelayMs, SOUND.callMaxDelayMs), callBird);
   };
   callBird();
+}
+
+/** Piip, piip, piiiip: played when the game is over. */
+export function playGameOverBeeps(scene: Phaser.Scene): void {
+  const sound = scene.sound;
+  if (!(sound instanceof Phaser.Sound.WebAudioSoundManager)) return;
+  if (sound.context.state !== 'running') return;
+  const { volume, ...rules } = SOUND.gameOver;
+  const now = sound.context.currentTime;
+  for (const note of beepNotes(rules)) playChirp(sound, note, now, 0, volume, 'square');
 }
