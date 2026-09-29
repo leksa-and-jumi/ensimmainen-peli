@@ -1,14 +1,29 @@
 import Phaser from 'phaser';
-import { COLORS, JUNGLE } from '../config';
-import type { VineShape } from '../logic/vine';
+import { COLORS, JUNGLE, VINE } from '../config';
+import { pointOnCurve, type VineCurve } from '../logic/vine';
 
-/** A hanging vine. Its container rotates around the top anchor point. */
-export function createVine(scene: Phaser.Scene, vine: VineShape): Phaser.GameObjects.Container {
+/** A vine is redrawn every frame, because it bends and stretches. */
+export function createVine(scene: Phaser.Scene): Phaser.GameObjects.Graphics {
+  return scene.add.graphics();
+}
+
+/** Draws the vine as a bent rope with a few small leaves and a leaf at the tip. */
+export function drawVine(g: Phaser.GameObjects.Graphics, curve: VineCurve): void {
   const w = JUNGLE.vineWidth;
-  const g = scene.add.graphics();
-  g.fillStyle(COLORS.vine);
-  g.fillRect(-w / 2, 0, w, vine.length);
+  const points = Array.from({ length: VINE.curvePoints + 1 }, (_, i) => {
+    const { x, y } = pointOnCurve(curve, i / VINE.curvePoints);
+    return new Phaser.Math.Vector2(x, y);
+  });
+
+  g.clear();
+  g.lineStyle(w, COLORS.vine);
+  g.strokePoints(points, false);
+
   g.fillStyle(COLORS.leafLight);
-  g.fillEllipse(0, vine.length, w * 4, w * 2.5);
-  return scene.add.container(vine.anchorX, 0, [g]);
+  VINE.leafSpots.forEach((f, i) => {
+    const { x, y } = pointOnCurve(curve, f);
+    const side = i % 2 === 0 ? -1 : 1;
+    g.fillEllipse(x + side * w * 1.2, y, w * 2.4, w * 1.4);
+  });
+  g.fillEllipse(curve.end.x, curve.end.y, w * 4, w * 2.5);
 }
