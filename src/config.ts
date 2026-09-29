@@ -17,6 +17,15 @@ export const COLORS = {
   leaf: 0x43a047,
   leafLight: 0x66bb6a,
   trunk: 0x6d4c41,
+  trunkDark: 0x4e342e,
+  trunkLight: 0x8d6e63,
+  leafDark: 0x388e3c,
+  leafOutline: 0x1b5e20,
+  groundDark: 0x3e2723,
+  grassBlade: 0x558b2f,
+  farHillsTop: 0xc8e6c9,
+  vineDark: 0x33691e,
+  vineLight: 0x8bc34a,
   vine: 0x558b2f,
   monkeyFur: 0x8d5524,
   monkeyFace: 0xf1c27d,
@@ -34,6 +43,11 @@ export const COLORS = {
   ground: 0x4e342e,
   lionBody: 0xe0a040,
   lionMane: 0x8d4a1d,
+  lionManeLight: 0xb5651d,
+  lionBelly: 0xf3d9a4,
+  lionNose: 0x4e342e,
+  lionEye: 0xffb300,
+  snakeBelly: 0xf0f4c3,
   snakeBody: 0xc0ca33,
   snakeSpots: 0x33691e,
   snakeTongue: 0xe53935,
@@ -131,6 +145,8 @@ export const JUNGLE = {
   ],
   trunkWidth: 26,
   leafRadius: 46,
+  /** The crown is `puffs` round bunches of leaves around the middle. */
+  crown: { puffs: 9, spread: 0.75, puffSize: 0.55, outline: 3 },
   vines: [
     { x: 0.18, length: 290 },
     { x: 0.46, length: 270 },
@@ -189,6 +205,12 @@ export const ENEMIES = {
     frames: 4,
     frameMs: 130,
   },
+} as const;
+
+/** How the lion and snake are drawn: dark edges `outline` grid units wide, `shade`% darker. */
+export const ANIMAL_LOOK = {
+  outline: 1.6,
+  shade: 30,
 } as const;
 
 /** Enemy hit boxes are this many pixels smaller on each side, to be fair. */

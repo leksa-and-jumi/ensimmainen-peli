@@ -26,21 +26,27 @@ export interface JungleLayers {
 const LEFT = -PARALLAX.margin;
 const RIGHT = GAME_WIDTH + PARALLAX.margin;
 
-/** Far away: misty hills. */
+/** Far away: misty hills, each with a lighter top where the sun shines. */
 function drawFarLayer(g: Phaser.GameObjects.Graphics): void {
   PARALLAX.hills.forEach((hill, i) => {
+    const x = hill.x * GAME_WIDTH;
     g.fillStyle(i % 2 === 0 ? COLORS.farHills : COLORS.farHillsLight);
-    g.fillCircle(hill.x * GAME_WIDTH, hill.y, hill.radius);
+    g.fillCircle(x, hill.y, hill.radius);
+    g.fillStyle(COLORS.farHillsTop, 0.35);
+    g.fillCircle(x - hill.radius * 0.2, hill.y - hill.radius * 0.15, hill.radius * 0.8);
   });
 }
 
-/** In the middle: the bushy tree line where the jungle begins, and its shadows. */
+/** In the middle: the bushy tree line where the jungle begins (two rows), and its shadows. */
 function drawMidLayer(g: Phaser.GameObjects.Graphics): void {
+  const { skyBottomY: y, treeLineSpacing: step, treeLineRadius: r } = JUNGLE;
+  g.fillStyle(COLORS.jungleShade);
+  for (let x = LEFT - step / 2; x <= RIGHT; x += step) g.fillCircle(x, y - r * 0.35, r * 0.9);
   g.fillStyle(COLORS.background);
-  g.fillRect(LEFT, JUNGLE.skyBottomY, RIGHT - LEFT, GAME_HEIGHT - JUNGLE.skyBottomY);
-  for (let x = LEFT; x <= RIGHT; x += JUNGLE.treeLineSpacing) {
-    g.fillCircle(x, JUNGLE.skyBottomY, JUNGLE.treeLineRadius);
-  }
+  g.fillRect(LEFT, y, RIGHT - LEFT, GAME_HEIGHT - y);
+  for (let x = LEFT; x <= RIGHT; x += step) g.fillCircle(x, y, r);
+  g.fillStyle(COLORS.leafLight, 0.25);
+  for (let x = LEFT; x <= RIGHT; x += step) g.fillCircle(x - r * 0.3, y - r * 0.35, r * 0.45);
 
   g.fillStyle(COLORS.jungleShade);
   for (const blob of JUNGLE.shadeBlobs) {
@@ -50,7 +56,8 @@ function drawMidLayer(g: Phaser.GameObjects.Graphics): void {
 
 /**
  * Draws one big tree. `lean` is how far the wind pushes its top to the right:
- * the trunk bends and the leaves follow.
+ * the trunk bends and the leaves follow. A cartoon with outlines, a tapering
+ * trunk with bark lines and a light side, and a leafy crown in three shades.
  */
 function drawTree(
   g: Phaser.GameObjects.Graphics,
@@ -60,37 +67,93 @@ function drawTree(
   const x = tree.x * GAME_WIDTH;
   const top = GAME_HEIGHT - tree.height;
   const r = JUNGLE.leafRadius;
+  const { puffs, spread, puffSize, outline } = JUNGLE.crown;
+  const w = JUNGLE.trunkWidth;
 
   // The trunk stands straight at the bottom and bends more towards the top.
-  const trunk = Array.from({ length: WIND.trunkPoints + 1 }, (_, i) => {
-    const f = i / WIND.trunkPoints;
-    return new Phaser.Math.Vector2(x + lean * f * f, GAME_HEIGHT - f * tree.height);
+  const along = (f: number) => ({
+    x: x + lean * f * f,
+    y: GAME_HEIGHT - f * tree.height,
   });
+  const trunk = (width: (f: number) => number, color: number, shift = 0): void => {
+    g.fillStyle(color);
+    for (let i = 0; i <= WIND.trunkPoints * 4; i++) {
+      const f = i / (WIND.trunkPoints * 4);
+      const p = along(f);
+      g.fillCircle(p.x + shift, p.y, width(f) / 2);
+    }
+  };
 
   g.clear();
-  g.lineStyle(JUNGLE.trunkWidth, COLORS.trunk);
-  g.strokePoints(trunk, false);
+  // Roots spread out at the bottom.
+  g.fillStyle(COLORS.trunkDark);
+  g.fillEllipse(x, GAME_HEIGHT - 4, w * 2.4 + outline, w * 0.9 + outline);
+  g.fillStyle(COLORS.trunk);
+  g.fillEllipse(x, GAME_HEIGHT - 4, w * 2.4, w * 0.9);
+  // Trunk: dark edge, wood, and a lighter left side.
+  trunk((f) => w * (1.15 - 0.4 * f) + outline, COLORS.trunkDark);
+  trunk((f) => w * (1.15 - 0.4 * f), COLORS.trunk);
+  trunk((f) => w * (0.35 - 0.12 * f), COLORS.trunkLight, -w * 0.22);
+  // A few bark lines.
+  g.lineStyle(2, COLORS.trunkDark);
+  for (const f of [0.2, 0.42, 0.63]) {
+    const p = along(f);
+    g.beginPath();
+    g.arc(p.x + w * 0.1, p.y, w * 0.3, Phaser.Math.DegToRad(200), Phaser.Math.DegToRad(300));
+    g.strokePath();
+  }
 
+  // Crown: puffs of leaves around a middle. Dark edge first, then three shades.
+  const cx = x + lean * 1.1;
+  const puffCenters = Array.from({ length: puffs }, (_, i) => {
+    const angle = (i / puffs) * Math.PI * 2;
+    return { x: cx + Math.cos(angle) * r * spread, y: top + Math.sin(angle) * r * spread * 0.7 };
+  });
+  const puffR = r * puffSize;
+  g.fillStyle(COLORS.leafOutline);
+  for (const p of puffCenters) g.fillCircle(p.x, p.y, puffR + outline);
+  g.fillCircle(cx, top, r * 0.8 + outline);
+  g.fillStyle(COLORS.leafDark);
+  for (const p of puffCenters) g.fillCircle(p.x, p.y, puffR);
+  g.fillCircle(cx, top, r * 0.8);
   g.fillStyle(COLORS.leaf);
-  g.fillCircle(x + lean - r * 0.8, top, r);
-  g.fillCircle(x + lean + r * 0.8, top, r);
+  for (const p of puffCenters) g.fillCircle(p.x - puffR * 0.15, p.y - puffR * 0.2, puffR * 0.75);
   g.fillStyle(COLORS.leafLight);
-  g.fillCircle(x + lean * 1.2, top - r * 0.5, r);
+  for (const p of puffCenters.filter((p) => p.y < top)) {
+    g.fillCircle(p.x - puffR * 0.3, p.y - puffR * 0.35, puffR * 0.4);
+  }
 }
 
-/** The leafy roof at the top, where the vines hang from, and the ground. They stay still. */
+/**
+ * The leafy roof at the top, where the vines hang from, and the ground with
+ * grass blades and pebbles. They stay still.
+ */
 function drawFrame(g: Phaser.GameObjects.Graphics): void {
+  const { canopySpacing: step, canopyRadius: r } = JUNGLE;
+  g.fillStyle(COLORS.leafOutline);
+  for (let x = -step / 2; x <= GAME_WIDTH + step; x += step) g.fillCircle(x, 6, r + 3);
+  g.fillStyle(COLORS.leafDark);
+  for (let x = -step / 2; x <= GAME_WIDTH + step; x += step) g.fillCircle(x, 6, r);
   let light = false;
-  for (let x = 0; x <= GAME_WIDTH; x += JUNGLE.canopySpacing) {
+  for (let x = 0; x <= GAME_WIDTH; x += step) {
     g.fillStyle(light ? COLORS.leafLight : COLORS.leaf);
-    g.fillCircle(x, 0, JUNGLE.canopyRadius);
+    g.fillCircle(x, 0, r * 0.85);
     light = !light;
   }
 
   g.fillStyle(COLORS.ground);
   g.fillRect(0, GROUND_Y, GAME_WIDTH, GROUND_HEIGHT);
+  g.fillStyle(COLORS.groundDark);
+  for (let x = 7; x < GAME_WIDTH; x += 23) {
+    g.fillEllipse(x, GROUND_Y + 18 + ((x * 7) % 22), 6, 3);
+  }
   g.fillStyle(COLORS.groundGrass);
   g.fillRect(0, GROUND_Y, GAME_WIDTH, GRASS_HEIGHT);
+  g.fillStyle(COLORS.grassBlade);
+  for (let x = 0; x < GAME_WIDTH; x += 6) {
+    const h = 5 + ((x * 13) % 7);
+    g.fillTriangle(x, GROUND_Y + 2, x + 5, GROUND_Y + 2, x + 2 + ((x * 3) % 3), GROUND_Y - h);
+  }
 }
 
 /**
