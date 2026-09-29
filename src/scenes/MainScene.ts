@@ -5,6 +5,8 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  MONKEY_COLORS,
+  type MonkeyColor,
   WIND,
   LIVES,
   DAY_NIGHT,
@@ -28,7 +30,7 @@ import { monkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
 import { darkness } from '../logic/dayNight';
 import { gustStarted, treeLean, windStrength } from '../logic/wind';
-import { buy, toggleWorn, type ShopItem, type Wallet } from '../logic/shop';
+import { buy, chooseColor, isOwned, toggleWorn, type ShopItem, type Wallet } from '../logic/shop';
 import { blinkVisible, isProtected, loseLife } from '../logic/lives';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
@@ -136,6 +138,7 @@ export class MainScene extends Phaser.Scene {
   private clothes!: MonkeyClothes;
   private owned: string[] = [];
   private worn: string[] = [];
+  private color: MonkeyColor = 'brown';
   /** How long the game has been paused for the shop, so time skips it. */
   private pausedMs = 0;
 
@@ -198,10 +201,11 @@ export class MainScene extends Phaser.Scene {
       // Everyone starts away, so the monkey gets a calm start.
       return { kind, image, rules, visitor: { phase: 'away', timeLeftMs: awayTime(rules) } };
     });
-    this.player = createMonkey(this, GAME_WIDTH / 2, GROUND_Y / 2);
     const saved = loadClothes();
     this.owned = saved.owned;
     this.worn = saved.worn;
+    this.color = saved.color;
+    this.player = createMonkey(this, GAME_WIDTH / 2, GROUND_Y / 2, this.color);
     this.clothes = new MonkeyClothes(this);
     this.clothes.setWorn(this.worn);
     this.fruits = [createFruit(this, 'banana'), createFruit(this, 'apple')];
@@ -279,12 +283,6 @@ export class MainScene extends Phaser.Scene {
     keyboard.on('keydown-K', (event: KeyboardEvent) => {
       if (!event.repeat) this.toggleShop();
     });
-    (['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN'] as const).forEach((key, i) => {
-      keyboard.on(`keydown-${key}`, () => {
-        const item = this.shop.itemAt(i);
-        if (this.shop.isOpen && item) this.chooseInShop(item);
-      });
-    });
   }
 
   private wallet(): Wallet {
@@ -294,6 +292,7 @@ export class MainScene extends Phaser.Scene {
       maxLives: LIVES.start,
       owned: this.owned,
       worn: this.worn,
+      color: this.color,
     };
   }
 
@@ -309,11 +308,13 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  /** Buys the item, or puts bought clothes on or off. */
+  /** Buys the item, puts bought clothes on or off, or changes the monkey's colour. */
   private chooseInShop(item: ShopItem): void {
     const before = this.wallet();
-    const alreadyOwned = item.kind === 'clothes' && before.owned.includes(item.id);
-    const after = alreadyOwned ? toggleWorn(before, item.id) : buy(item, before);
+    let after: Wallet;
+    if (!isOwned(item, before)) after = buy(item, before);
+    else if (item.kind === 'color') after = chooseColor(item, before);
+    else after = toggleWorn(before, item.id);
 
     this.score = after.score;
     this.scoreText.setText(formatScore(this.score));
@@ -321,7 +322,9 @@ export class MainScene extends Phaser.Scene {
     showLives(this.hearts, this.lives);
     this.owned = [...after.owned];
     this.worn = [...after.worn];
-    saveClothes({ owned: this.owned, worn: this.worn });
+    if (after.color in MONKEY_COLORS) this.color = after.color as MonkeyColor;
+    saveClothes({ owned: this.owned, worn: this.worn, color: this.color });
+    setMonkeyPose(this.player, 'stand', this.color);
     this.clothes.setWorn(this.worn);
     this.clothes.follow(this.player);
     this.shop.refresh(after);
@@ -410,7 +413,7 @@ export class MainScene extends Phaser.Scene {
       walking: this.walking,
     };
     const pose = monkeyPose(state, time, MONKEY_ANIMATION.stepMs, MONKEY_ANIMATION.kickMs);
-    setMonkeyPose(this.player, pose);
+    setMonkeyPose(this.player, pose, this.color);
   }
 
   private flyBirds(time: number, delta: number): void {

@@ -359,14 +359,43 @@ export const SHOP = {
     { id: 'glasses', name: 'Aurinkolasit', price: 8, kind: 'clothes' },
     { id: 'crown', name: 'Kruunu', price: 15, kind: 'clothes' },
     { id: 'life', name: 'Elämä', price: 10, kind: 'life' },
+    { id: 'brown', name: 'Ruskea', price: 0, kind: 'color' },
+    { id: 'pink', name: 'Pinkki', price: 10, kind: 'color' },
+    { id: 'blue', name: 'Sininen', price: 10, kind: 'color' },
+    { id: 'black', name: 'Musta', price: 12, kind: 'color' },
+    { id: 'rainbow', name: 'Sateenkaari', price: 25, kind: 'color' },
   ],
-  panelWidth: 600,
-  /** Room for the title and points above the items, and the close button below. */
-  headerHeight: 95,
-  footerHeight: 60,
+  /** Clothes and lives on the left, monkey colours on the right. */
+  panelWidth: 760,
+  /** Room for the title, points and column titles above the items, and the close button below. */
+  headerHeight: 110,
+  footerHeight: 55,
   panelAlpha: 0.95,
   rowHeight: 50,
-  iconSize: 36,
+  iconSize: 32,
   /** Where bought clothes are remembered in this browser. */
   saveKey: 'ensimmainen-peli:vaatteet',
 } as const;
+
+/** The same fur colour on every part of the monkey. */
+const solidFur = (color: number) =>
+  ({ tail: color, legs: color, body: color, ears: color, arms: color, head: color }) as const;
+
+/** Monkey colours from the shop. Each one gives a colour to every part of the fur. */
+export const MONKEY_COLORS = {
+  brown: solidFur(COLORS.monkeyFur),
+  pink: solidFur(0xf06292),
+  blue: solidFur(0x42a5f5),
+  black: solidFur(0x303030),
+  rainbow: {
+    tail: 0xe53935,
+    legs: 0xfb8c00,
+    body: 0xfdd835,
+    arms: 0x43a047,
+    ears: 0x1e88e5,
+    head: 0x8e24aa,
+  },
+} as const;
+
+export type MonkeyColor = keyof typeof MONKEY_COLORS;
+export const DEFAULT_MONKEY_COLOR: MonkeyColor = 'brown';

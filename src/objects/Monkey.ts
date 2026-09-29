@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, PLAYER_WIDTH } from '../config';
+import { COLORS, MONKEY_COLORS, PLAYER_WIDTH, type MonkeyColor } from '../config';
 import type { MonkeyPose } from '../logic/pose';
 
 /** The monkey is drawn on a 64 x 88 grid and scaled to PLAYER_WIDTH. */
@@ -134,7 +134,7 @@ const POSES: Record<MonkeyPose, Limbs> = {
   },
 };
 
-const textureKey = (pose: MonkeyPose): string => `monkey-${pose}`;
+const textureKey = (color: MonkeyColor, pose: MonkeyPose): string => `monkey-${color}-${pose}`;
 
 /** The last point of a limb: where the hand or foot goes. */
 function end(points: Point[]): Point {
@@ -143,16 +143,17 @@ function end(points: Point[]): Point {
   return last;
 }
 
-/** Draws one picture of the monkey into a texture. */
-function createMonkeyTexture(scene: Phaser.Scene, pose: MonkeyPose): void {
-  const key = textureKey(pose);
+/** Draws one picture of the monkey in the given colour into a texture. */
+function createMonkeyTexture(scene: Phaser.Scene, color: MonkeyColor, pose: MonkeyPose): void {
+  const key = textureKey(color, pose);
   if (scene.textures.exists(key)) return;
 
+  const fur = MONKEY_COLORS[color];
   const limbs = POSES[pose];
   const u = PLAYER_WIDTH / GRID_WIDTH;
   const g = scene.add.graphics();
-  const limb = (points: Point[]): void => {
-    g.lineStyle(7 * u, COLORS.monkeyFur);
+  const limb = (points: Point[], furColor: number): void => {
+    g.lineStyle(7 * u, furColor);
     g.strokePoints(
       points.map(([x, y]) => new Phaser.Math.Vector2(x * u, y * u)),
       false,
@@ -160,7 +161,7 @@ function createMonkeyTexture(scene: Phaser.Scene, pose: MonkeyPose): void {
   };
 
   // Curly tail
-  g.lineStyle(5 * u, COLORS.monkeyFur);
+  g.lineStyle(5 * u, fur.tail);
   g.beginPath();
   g.moveTo(40 * u, 70 * u);
   g.lineTo(50.4 * u, 72.9 * u);
@@ -168,8 +169,8 @@ function createMonkeyTexture(scene: Phaser.Scene, pose: MonkeyPose): void {
   g.strokePath();
 
   // Legs and feet
-  limb(limbs.leftLeg);
-  limb(limbs.rightLeg);
+  limb(limbs.leftLeg, fur.legs);
+  limb(limbs.rightLeg, fur.legs);
   g.fillStyle(COLORS.monkeyFace);
   const [lx, ly] = end(limbs.leftLeg);
   const [rx, ry] = end(limbs.rightLeg);
@@ -177,13 +178,13 @@ function createMonkeyTexture(scene: Phaser.Scene, pose: MonkeyPose): void {
   g.fillEllipse((rx + 2) * u, (ry + 1) * u, 10 * u, 5 * u);
 
   // Body and belly
-  g.fillStyle(COLORS.monkeyFur);
+  g.fillStyle(fur.body);
   g.fillEllipse(32 * u, 60 * u, 28 * u, 36 * u);
   g.fillStyle(COLORS.monkeyFace);
   g.fillEllipse(32 * u, 63 * u, 16 * u, 22 * u);
 
   // Ears
-  g.fillStyle(COLORS.monkeyFur);
+  g.fillStyle(fur.ears);
   g.fillCircle(15 * u, 27 * u, 7 * u);
   g.fillCircle(49 * u, 27 * u, 7 * u);
   g.fillStyle(COLORS.monkeyFace);
@@ -191,8 +192,8 @@ function createMonkeyTexture(scene: Phaser.Scene, pose: MonkeyPose): void {
   g.fillCircle(49 * u, 27 * u, 3.5 * u);
 
   // Arms and hands
-  limb(limbs.leftArm);
-  limb(limbs.rightArm);
+  limb(limbs.leftArm, fur.arms);
+  limb(limbs.rightArm, fur.arms);
   g.fillStyle(COLORS.monkeyFace);
   for (const arm of [limbs.leftArm, limbs.rightArm]) {
     const [hx, hy] = end(arm);
@@ -200,7 +201,7 @@ function createMonkeyTexture(scene: Phaser.Scene, pose: MonkeyPose): void {
   }
 
   // Head
-  g.fillStyle(COLORS.monkeyFur);
+  g.fillStyle(fur.head);
   g.fillCircle(32 * u, 30 * u, 17 * u);
 
   // Face
@@ -222,10 +223,21 @@ function createMonkeyTexture(scene: Phaser.Scene, pose: MonkeyPose): void {
   g.destroy();
 }
 
-/** Shows the given picture of the monkey. */
-export function setMonkeyPose(monkey: Phaser.GameObjects.Image, pose: MonkeyPose): void {
-  const key = textureKey(pose);
-  if (monkey.texture.key !== key) monkey.setTexture(key);
+/** Makes all the pictures of the monkey in one colour (only the first time). */
+function createMonkeyTextures(scene: Phaser.Scene, color: MonkeyColor): void {
+  for (const pose of Object.keys(POSES) as MonkeyPose[]) createMonkeyTexture(scene, color, pose);
+}
+
+/** Shows the given picture of the monkey, in the given colour. */
+export function setMonkeyPose(
+  monkey: Phaser.GameObjects.Image,
+  pose: MonkeyPose,
+  color: MonkeyColor,
+): void {
+  const key = textureKey(color, pose);
+  if (monkey.texture.key === key) return;
+  createMonkeyTextures(monkey.scene, color);
+  monkey.setTexture(key);
 }
 
 /**
@@ -233,7 +245,12 @@ export function setMonkeyPose(monkey: Phaser.GameObjects.Image, pose: MonkeyPose
  * Its origin is where the hands hold a vine, so it hangs from a vine tip naturally.
  * All pictures are the same size, so the origin stays in the same place.
  */
-export function createMonkey(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image {
-  for (const pose of Object.keys(POSES) as MonkeyPose[]) createMonkeyTexture(scene, pose);
-  return scene.add.image(x, y, textureKey('stand')).setOrigin(0.5, HANDS_Y / GRID_HEIGHT);
+export function createMonkey(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  color: MonkeyColor,
+): Phaser.GameObjects.Image {
+  createMonkeyTextures(scene, color);
+  return scene.add.image(x, y, textureKey(color, 'stand')).setOrigin(0.5, HANDS_Y / GRID_HEIGHT);
 }

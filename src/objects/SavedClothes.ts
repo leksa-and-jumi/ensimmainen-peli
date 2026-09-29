@@ -1,11 +1,16 @@
-import { SHOP } from '../config';
+import { DEFAULT_MONKEY_COLOR, MONKEY_COLORS, SHOP, type MonkeyColor } from '../config';
 
+/** What was bought in the shop: clothes and colours, what is worn, and the monkey's colour. */
 export interface SavedClothes {
   owned: string[];
   worn: string[];
+  color: MonkeyColor;
 }
 
-const EMPTY: SavedClothes = { owned: [], worn: [] };
+const EMPTY: SavedClothes = { owned: [], worn: [], color: DEFAULT_MONKEY_COLOR };
+
+const isMonkeyColor = (value: unknown): value is MonkeyColor =>
+  typeof value === 'string' && value in MONKEY_COLORS;
 
 const isStringList = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((v) => typeof v === 'string');
@@ -20,8 +25,9 @@ export function loadClothes(): SavedClothes {
     if (!raw) return EMPTY;
     const data: unknown = JSON.parse(raw);
     if (typeof data !== 'object' || data === null) return EMPTY;
-    const { owned, worn } = data as Record<string, unknown>;
-    return isStringList(owned) && isStringList(worn) ? { owned, worn } : EMPTY;
+    const { owned, worn, color } = data as Record<string, unknown>;
+    if (!isStringList(owned) || !isStringList(worn)) return EMPTY;
+    return { owned, worn, color: isMonkeyColor(color) ? color : DEFAULT_MONKEY_COLOR };
   } catch {
     return EMPTY;
   }
