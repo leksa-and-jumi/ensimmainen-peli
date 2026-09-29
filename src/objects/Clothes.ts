@@ -15,19 +15,35 @@ interface ClothesDrawing {
   draw: (g: Phaser.GameObjects.Graphics) => void;
 }
 
+/** In drawing order: later ones are drawn on top. */
 const DRAWINGS: Record<string, ClothesDrawing> = {
-  // An explorer's hat on top of the head.
-  hat: {
-    width: 44,
-    height: 20,
-    anchor: [22, 14],
-    offset: [0, 10],
+  // A striped scarf around the neck, one end hanging down.
+  scarf: {
+    width: 30,
+    height: 22,
+    anchor: [15, 4],
+    offset: [0, 41],
     draw: (g) => {
-      g.fillStyle(COLORS.hat);
-      g.fillEllipse(22 * U, 10 * U, 24 * U, 16 * U);
-      g.fillEllipse(22 * U, 15 * U, 42 * U, 7 * U);
-      g.fillStyle(COLORS.hatBand);
-      g.fillRect(11 * U, 11 * U, 22 * U, 3 * U);
+      g.fillStyle(COLORS.scarf);
+      g.fillEllipse(15 * U, 4 * U, 28 * U, 8 * U);
+      g.fillRect(17 * U, 4 * U, 6 * U, 16 * U);
+      g.fillStyle(COLORS.scarfStripe);
+      g.fillRect(17 * U, 11 * U, 6 * U, 2 * U);
+      g.fillRect(17 * U, 16 * U, 6 * U, 2 * U);
+    },
+  },
+  // A bow tie under the chin.
+  bowtie: {
+    width: 22,
+    height: 12,
+    anchor: [11, 6],
+    offset: [0, 42],
+    draw: (g) => {
+      g.fillStyle(COLORS.bowtie);
+      g.fillTriangle(1 * U, 1 * U, 1 * U, 11 * U, 11 * U, 6 * U);
+      g.fillTriangle(21 * U, 1 * U, 21 * U, 11 * U, 11 * U, 6 * U);
+      g.fillStyle(COLORS.bowtieKnot);
+      g.fillCircle(11 * U, 6 * U, 2.5 * U);
     },
   },
   // Sunglasses over the eyes.
@@ -46,6 +62,39 @@ const DRAWINGS: Record<string, ClothesDrawing> = {
         g.fillStyle(COLORS.glassesShine);
         g.fillCircle((x - 2) * U, 4 * U, 1.2 * U);
       }
+    },
+  },
+  // An explorer's hat on top of the head.
+  hat: {
+    width: 44,
+    height: 20,
+    anchor: [22, 14],
+    offset: [0, 10],
+    draw: (g) => {
+      g.fillStyle(COLORS.hat);
+      g.fillEllipse(22 * U, 10 * U, 24 * U, 16 * U);
+      g.fillEllipse(22 * U, 15 * U, 42 * U, 7 * U);
+      g.fillStyle(COLORS.hatBand);
+      g.fillRect(11 * U, 11 * U, 22 * U, 3 * U);
+    },
+  },
+  // A golden crown with gems.
+  crown: {
+    width: 30,
+    height: 18,
+    anchor: [15, 16],
+    offset: [0, 10],
+    draw: (g) => {
+      g.fillStyle(COLORS.crown);
+      g.fillRect(3 * U, 10 * U, 24 * U, 7 * U);
+      g.fillTriangle(3 * U, 11 * U, 9 * U, 11 * U, 4 * U, 1 * U);
+      g.fillTriangle(11 * U, 11 * U, 19 * U, 11 * U, 15 * U, 0);
+      g.fillTriangle(21 * U, 11 * U, 27 * U, 11 * U, 26 * U, 1 * U);
+      g.fillStyle(COLORS.crownGemRed);
+      g.fillCircle(15 * U, 13.5 * U, 2 * U);
+      g.fillStyle(COLORS.crownGemBlue);
+      g.fillCircle(8 * U, 13.5 * U, 1.5 * U);
+      g.fillCircle(22 * U, 13.5 * U, 1.5 * U);
     },
   },
 };

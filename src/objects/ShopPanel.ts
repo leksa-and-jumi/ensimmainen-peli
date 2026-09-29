@@ -46,7 +46,8 @@ export class ShopPanel {
   private readonly items: ShopItem[];
 
   constructor(scene: Phaser.Scene, heartTexture: string, actions: ShopActions) {
-    const { panelWidth: w, panelHeight: h, rowHeight, iconSize } = SHOP;
+    const { panelWidth: w, headerHeight, footerHeight, rowHeight, iconSize } = SHOP;
+    const h = headerHeight + SHOP.items.length * rowHeight + footerHeight;
     const left = -w / 2 + 24;
     const top = -h / 2;
     this.items = SHOP.items.map((item) => ({ ...item }));
@@ -63,7 +64,7 @@ export class ShopPanel {
 
     const rows: Phaser.GameObjects.GameObject[] = [];
     this.buttons = this.items.map((item, i) => {
-      const y = top + 120 + i * rowHeight;
+      const y = top + headerHeight + rowHeight / 2 + i * rowHeight;
       const texture = item.kind === 'life' ? heartTexture : clothesTexture(scene, item.id);
       const icon = scene.add.image(left + iconSize / 2, y, texture);
       icon.setScale(Math.min(iconSize / icon.width, iconSize / icon.height));

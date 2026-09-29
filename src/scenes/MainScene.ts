@@ -279,7 +279,7 @@ export class MainScene extends Phaser.Scene {
     keyboard.on('keydown-K', (event: KeyboardEvent) => {
       if (!event.repeat) this.toggleShop();
     });
-    (['ONE', 'TWO', 'THREE'] as const).forEach((key, i) => {
+    (['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN'] as const).forEach((key, i) => {
       keyboard.on(`keydown-${key}`, () => {
         const item = this.shop.itemAt(i);
         if (this.shop.isOpen && item) this.chooseInShop(item);

@@ -47,6 +47,13 @@ export const COLORS = {
   glassesFrame: 0x000000,
   glassesLens: 0x263238,
   glassesShine: 0xffffff,
+  crown: 0xffc107,
+  crownGemRed: 0xe53935,
+  crownGemBlue: 0x1e88e5,
+  bowtie: 0xe91e63,
+  bowtieKnot: 0xad1457,
+  scarf: 0x1e88e5,
+  scarfStripe: 0xffffff,
   shopPanel: 0x1b5e20,
   shopBorder: 0xffd54f,
   shopButton: '#ffd54f',
@@ -347,14 +354,19 @@ export const LIVES = {
 export const SHOP = {
   items: [
     { id: 'hat', name: 'Hattu', price: 5, kind: 'clothes' },
+    { id: 'bowtie', name: 'Rusetti', price: 6, kind: 'clothes' },
+    { id: 'scarf', name: 'Huivi', price: 7, kind: 'clothes' },
     { id: 'glasses', name: 'Aurinkolasit', price: 8, kind: 'clothes' },
+    { id: 'crown', name: 'Kruunu', price: 15, kind: 'clothes' },
     { id: 'life', name: 'Elämä', price: 10, kind: 'life' },
   ],
   panelWidth: 600,
-  panelHeight: 330,
+  /** Room for the title and points above the items, and the close button below. */
+  headerHeight: 95,
+  footerHeight: 60,
   panelAlpha: 0.95,
-  rowHeight: 62,
-  iconSize: 40,
+  rowHeight: 50,
+  iconSize: 36,
   /** Where bought clothes are remembered in this browser. */
   saveKey: 'ensimmainen-peli:vaatteet',
 } as const;
