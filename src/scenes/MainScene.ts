@@ -5,6 +5,10 @@ import {
   GAME_WIDTH,
   JUNGLE,
   PLAYER_SPEED,
+  WIND,
+  LIVES,
+  DAY_NIGHT,
+  DEPTH,
   MONKEY_ANIMATION,
   SKY_BIRDS,
   ENEMIES,
@@ -22,22 +26,45 @@ import { awayTime, stepVisitor, type Visitor, type VisitorRules } from '../logic
 import { bobOffset, flapFrame, stepFlight } from '../logic/flight';
 import { monkeyPose } from '../logic/pose';
 import { frameIndex } from '../logic/animation';
+import { darkness } from '../logic/dayNight';
+import { gustStarted, treeLean, windStrength } from '../logic/wind';
+import { blinkVisible, isProtected, loseLife } from '../logic/lives';
 import { stepBody, velocityBetween, type Area } from '../logic/physics';
 import { addPoints, formatScore } from '../logic/score';
-import { approach, findGrabbableVine, swingAngle, vineTip, type VineShape } from '../logic/vine';
+import {
+  approach,
+  findGrabbableVine,
+  stepSpring,
+  swingAngle,
+  vineCurve,
+  vineTip,
+  type Spring,
+  type VineShape,
+} from '../logic/vine';
 import { createEnemy, setEnemyFrame, type EnemyKind } from '../objects/Enemies';
-import { drawJungle } from '../objects/JungleBackground';
+import {
+  createJungle,
+  slideLayers,
+  swayTrees,
+  type JungleLayers,
+} from '../objects/JungleBackground';
+import { FallingLeaves } from '../objects/FallingLeaves';
 import { startJungleSounds } from '../objects/JungleSounds';
 import { createFruit } from '../objects/Fruit';
+import { createHearts, showLives } from '../objects/Hearts';
 import { createMonkey, setMonkeyPose } from '../objects/Monkey';
 import { createSkyBird, setSkyBirdFrame } from '../objects/SkyBird';
-import { createVine } from '../objects/Vine';
+import { createVine, drawVine } from '../objects/Vine';
+import { createSkyLights, setDarkness, type SkyLights } from '../objects/SkyLights';
 
 interface SwingingVine {
   shape: VineShape;
-  container: Phaser.GameObjects.Container;
+  graphics: Phaser.GameObjects.Graphics;
   amplitude: number;
   phase: number;
+  angle: number;
+  /** How far the vine is stretched, like a rubber band. */
+  stretch: Spring;
   tip: { x: number; y: number };
 }
 
@@ -58,7 +85,7 @@ interface Enemy {
   visitor: Visitor;
 }
 
-const HINT = '← → liiku.  ↑ tai välilyönti: hyppää!  Varo leijonaa ja käärmettä!';
+const HINT = '← → tai A D: liiku.  ↑, W tai välilyönti: hyppää!  Varo petoja!';
 const MUTED_KEY = 'muted';
 const ENEMY_KINDS: readonly EnemyKind[] = ['lion', 'snake'];
 
@@ -71,6 +98,9 @@ export class MainScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Image;
   private fruits: Phaser.GameObjects.Image[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  /** Letter keys that work like the arrows: A = left, D = right (W jumps). */
+  private letterLeft!: Phaser.Input.Keyboard.Key;
+  private letterRight!: Phaser.Input.Keyboard.Key;
   private vines: SwingingVine[] = [];
   /** The vine the monkey hangs on, or null. */
   private hangingOn: SwingingVine | null = null;
@@ -84,7 +114,18 @@ export class MainScene extends Phaser.Scene {
   private score = 0;
   private enemies: Enemy[] = [];
   private skyBirds: SkyBird[] = [];
+  private skyLights!: SkyLights;
+  private layers!: JungleLayers;
+  private leaves!: FallingLeaves;
+  /** How hard the wind blows: 0 = calm, 1 = strongest. */
+  private wind = 0;
+  /** 0 = day, 1 = night. */
+  private dark = 0;
   private gameOver = false;
+  private lives: number = LIVES.start;
+  /** When the monkey was last hit, or null. */
+  private hitAt: number | null = null;
+  private hearts: Phaser.GameObjects.Image[] = [];
   /** Set by a jump key press, used up by the next frame. */
   private jumpQueued = false;
 
@@ -102,11 +143,15 @@ export class MainScene extends Phaser.Scene {
     this.walking = false;
     this.score = 0;
     this.gameOver = false;
+    this.lives = LIVES.start;
+    this.hitAt = null;
     this.jumpQueued = false;
   }
 
   create(): void {
-    drawJungle(this);
+    this.layers = createJungle(this);
+    this.skyLights = createSkyLights(this);
+    this.leaves = new FallingLeaves(this);
     this.skyBirds = SKY_BIRDS.birds.map((bird, i) => ({
       image: createSkyBird(this, bird.color).setFlipX(bird.direction < 0),
       color: bird.color,
@@ -120,9 +165,11 @@ export class MainScene extends Phaser.Scene {
       const shape = { anchorX: v.x * GAME_WIDTH, length: v.length };
       return {
         shape,
-        container: createVine(this, shape),
+        graphics: createVine(this),
         amplitude: Phaser.Math.DegToRad(VINE.swingDegrees),
         phase: i * VINE.phaseStep,
+        angle: 0,
+        stretch: { pos: 0, vel: 0 },
         tip: vineTip(shape, 0),
       };
     });
@@ -150,6 +197,8 @@ export class MainScene extends Phaser.Scene {
       stroke: COLORS.textShadow,
       strokeThickness: 4,
     });
+    this.scoreText.setDepth(DEPTH.hud);
+    this.hearts = createHearts(this);
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, HINT, {
         fontSize: '18px',
@@ -157,19 +206,23 @@ export class MainScene extends Phaser.Scene {
         stroke: COLORS.textShadow,
         strokeThickness: 4,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(DEPTH.hud);
 
     const keyboard = this.input.keyboard;
     if (!keyboard) {
       throw new Error('Keyboard input is not available');
     }
     this.cursors = keyboard.createCursorKeys();
+    this.letterLeft = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    this.letterRight = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     // Listen to key presses directly, so even a very quick tap is noticed.
     const queueJump = (event: KeyboardEvent): void => {
       if (!event.repeat) this.jumpQueued = true;
     };
     keyboard.on('keydown-UP', queueJump);
     keyboard.on('keydown-SPACE', queueJump);
+    keyboard.on('keydown-W', queueJump);
 
     // Kept in the game registry, so the choice stays when the game restarts.
     const isMuted = (): boolean => this.registry.get(MUTED_KEY) === true;
@@ -181,7 +234,8 @@ export class MainScene extends Phaser.Scene {
         stroke: COLORS.textShadow,
         strokeThickness: 4,
       })
-      .setOrigin(1, 0);
+      .setOrigin(1, 0)
+      .setDepth(DEPTH.hud);
     const showSound = (): void => {
       soundText.setText(isMuted() ? 'M: äänet päälle' : 'M: äänet pois');
     };
@@ -199,6 +253,8 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
+    this.dark = darkness(time, DAY_NIGHT.cycleMs, DAY_NIGHT.fadeFraction);
+    setDarkness(this.skyLights, this.dark);
     this.swingVines(time, delta);
     this.flyBirds(time, delta);
     this.moveEnemies(time, delta);
@@ -210,6 +266,8 @@ export class MainScene extends Phaser.Scene {
       this.hang(this.hangingOn, delta);
     }
     this.animateMonkey(time);
+    slideLayers(this.layers, this.player.x);
+    this.blowWind(time, delta);
 
     const playerBounds = this.player.getBounds();
     for (const fruit of this.fruits) {
@@ -220,10 +278,42 @@ export class MainScene extends Phaser.Scene {
       }
     }
 
+    this.checkEnemyHits(time, playerBounds);
+  }
+
+  /** Touching a lion or snake costs a life, then the monkey blinks for a moment. */
+  private checkEnemyHits(time: number, playerBounds: Phaser.Geom.Rectangle): void {
+    const { protectMs, blinkMs } = LIVES;
+    this.player.setVisible(blinkVisible(time, this.hitAt, protectMs, blinkMs));
+    if (isProtected(time, this.hitAt, protectMs)) return;
+
     const visible = this.enemies.filter((enemy) => enemy.image.visible);
-    if (visible.some((enemy) => this.touches(playerBounds, enemy))) {
+    if (!visible.some((enemy) => this.touches(playerBounds, enemy))) return;
+
+    this.lives = loseLife(this.lives);
+    this.hitAt = time;
+    showLives(this.hearts, this.lives);
+    if (this.lives === 0) {
+      this.player.setVisible(true);
       this.showGameOver();
     }
+  }
+
+  /** The wind bends the big trees, and a gust blows leaves off them. */
+  private blowWind(time: number, delta: number): void {
+    const wind = windStrength(time, WIND.base, WIND.waves);
+    const gust = gustStarted(this.wind, wind, WIND.gustLimit);
+    this.wind = wind;
+
+    const leans = JUNGLE.trees.map((_, i) =>
+      treeLean(wind, time, i, WIND.leanPixels, WIND.flutterPixels, WIND.flutterMs),
+    );
+    swayTrees(this.layers, leans);
+    const treeTops = JUNGLE.trees.map((tree, i) => ({
+      x: tree.x * GAME_WIDTH + (leans[i] ?? 0) + this.layers.near.x,
+      y: GAME_HEIGHT - tree.height,
+    }));
+    this.leaves.update(delta, wind, gust, treeTops);
   }
 
   private animateMonkey(time: number): void {
@@ -249,7 +339,8 @@ export class MainScene extends Phaser.Scene {
         GAME_WIDTH + half,
       );
       const bob = bobOffset(time, SKY_BIRDS.bobPixels, SKY_BIRDS.bobPeriodMs, bird.phase);
-      bird.image.setPosition(bird.x, bird.y + bob);
+      // The birds go to sleep at night.
+      bird.image.setPosition(bird.x, bird.y + bob).setAlpha(1 - this.dark);
       setSkyBirdFrame(bird.image, bird.color, frame);
     }
   }
@@ -279,9 +370,10 @@ export class MainScene extends Phaser.Scene {
     this.gameOver = true;
     this.add
       .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.gameOverOverlay, GAME_OVER_OVERLAY_ALPHA)
-      .setOrigin(0);
+      .setOrigin(0)
+      .setDepth(DEPTH.gameOver);
     const lines = [
-      { text: 'Voi ei! Apina jäi kiinni!', size: '48px', y: GAME_HEIGHT / 2 - 60 },
+      { text: 'Voi ei! Elämät loppuivat!', size: '48px', y: GAME_HEIGHT / 2 - 60 },
       { text: formatScore(this.score), size: '32px', y: GAME_HEIGHT / 2 },
       { text: 'Paina välilyöntiä, niin pelaat uudestaan.', size: '22px', y: GAME_HEIGHT / 2 + 60 },
     ];
@@ -293,7 +385,8 @@ export class MainScene extends Phaser.Scene {
           stroke: COLORS.textShadow,
           strokeThickness: 5,
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(DEPTH.gameOver);
     }
   }
 
@@ -303,8 +396,20 @@ export class MainScene extends Phaser.Scene {
       const targetDegrees = vine === this.hangingOn ? VINE.hangSwingDegrees : VINE.swingDegrees;
       vine.amplitude = approach(vine.amplitude, Phaser.Math.DegToRad(targetDegrees), maxChange);
       const angle = swingAngle(time, vine.amplitude, VINE.periodMs, vine.phase);
-      vine.container.rotation = angle;
-      vine.tip = vineTip(vine.shape, angle);
+      const angularVelocity = delta > 0 ? (angle - vine.angle) / (delta / 1000) : 0;
+      vine.angle = angle;
+
+      const hanging = vine === this.hangingOn;
+      vine.stretch = stepSpring(
+        vine.stretch,
+        hanging ? VINE.hangStretch : 0,
+        VINE.springStiffness,
+        VINE.springDamping,
+        delta / 1000,
+      );
+      const shape = { ...vine.shape, length: vine.shape.length + vine.stretch.pos };
+      vine.tip = vineTip(shape, angle);
+      drawVine(vine.graphics, vineCurve(shape, angle, angularVelocity, VINE.bendLagSeconds));
     }
   }
 
@@ -318,7 +423,7 @@ export class MainScene extends Phaser.Scene {
     // The monkey's origin is at its hands, so it holds on to the tip.
     const velocity = velocityBetween(this.player, vine.tip, delta / 1000);
     this.player.setPosition(vine.tip.x, vine.tip.y);
-    this.player.rotation = vine.container.rotation;
+    this.player.rotation = vine.angle;
 
     if (this.jumpPressed()) {
       // Fly off with the speed of the swing, plus a little jump.
@@ -336,6 +441,8 @@ export class MainScene extends Phaser.Scene {
     const index = findGrabbableVine(this.player, tips, VINE.grabRadius, ignore);
     if (index !== null) {
       this.hangingOn = this.vines[index] ?? null;
+      // The vine stretches like a rubber band when the monkey lands on it.
+      if (this.hangingOn) this.hangingOn.stretch.vel += VINE.grabBounceSpeed;
       return;
     }
     if (this.releasedFrom) {
@@ -348,8 +455,8 @@ export class MainScene extends Phaser.Scene {
   private move(delta: number): void {
     const wantsJump = this.jumpPressed();
     let direction = 0;
-    if (this.cursors.left.isDown) direction -= 1;
-    if (this.cursors.right.isDown) direction += 1;
+    if (this.cursors.left.isDown || this.letterLeft.isDown) direction -= 1;
+    if (this.cursors.right.isDown || this.letterRight.isDown) direction += 1;
     this.walking = direction !== 0;
 
     if (this.onGround) {
