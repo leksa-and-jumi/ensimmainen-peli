@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { approach, findGrabbableVine, swingAngle, vineTip } from './vine';
+import {
+  approach,
+  findGrabbableVine,
+  pointOnCurve,
+  stepSpring,
+  swingAngle,
+  vineCurve,
+  vineTip,
+} from './vine';
 
 describe('vineTip', () => {
   const vine = { anchorX: 100, length: 50 };
@@ -56,5 +64,53 @@ describe('findGrabbableVine', () => {
 
   it('skips the ignored vine', () => {
     expect(findGrabbableVine({ x: 1, y: 1 }, tips, 10, 0)).toBeNull();
+  });
+});
+
+describe('stepSpring', () => {
+  it('pulls towards the target', () => {
+    const next = stepSpring({ pos: 0, vel: 0 }, 10, 100, 0, 0.01);
+    expect(next.vel).toBeGreaterThan(0);
+    expect(next.pos).toBeGreaterThan(0);
+  });
+
+  it('bounces past the target and settles there', () => {
+    let spring = { pos: 0, vel: 0 };
+    let overshot = false;
+    for (let i = 0; i < 1000; i++) {
+      spring = stepSpring(spring, 10, 100, 5, 0.01);
+      if (spring.pos > 10) overshot = true;
+    }
+    expect(overshot).toBe(true);
+    expect(spring.pos).toBeCloseTo(10);
+  });
+});
+
+describe('vineCurve', () => {
+  const vine = { anchorX: 100, length: 200 };
+
+  it('is straight down when still', () => {
+    const curve = vineCurve(vine, 0, 0, 0.2);
+    expect(curve.start).toEqual({ x: 100, y: 0 });
+    expect(curve.control.x).toBeCloseTo(100);
+    expect(curve.control.y).toBeCloseTo(100);
+    expect(curve.end).toEqual({ x: 100, y: 200 });
+  });
+
+  it('ends at the tip and bends against the swing', () => {
+    const curve = vineCurve(vine, 0.3, 1, 0.2);
+    expect(curve.end).toEqual(vineTip(vine, 0.3));
+    // Swinging clockwise (tip moving left), the middle lags to the right.
+    const straight = vineCurve(vine, 0.3, 0, 0.2);
+    expect(curve.control.x).toBeGreaterThan(straight.control.x);
+  });
+});
+
+describe('pointOnCurve', () => {
+  it('starts at the anchor and ends at the tip', () => {
+    const curve = { start: { x: 0, y: 0 }, control: { x: 10, y: 50 }, end: { x: 0, y: 100 } };
+    expect(pointOnCurve(curve, 0)).toEqual({ x: 0, y: 0 });
+    expect(pointOnCurve(curve, 1)).toEqual({ x: 0, y: 100 });
+    expect(pointOnCurve(curve, 0.5)).toEqual({ x: 5, y: 50 });
   });
 });
